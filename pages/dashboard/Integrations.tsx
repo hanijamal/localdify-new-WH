@@ -11,6 +11,7 @@ import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import WhatsappConnector from '../../components/dashboard/WhatsappConnector';
+import TemplateModal from '../../components/dashboard/TemplateModal';
 
 // Ensure this URL matches your Railway deployment
 const WHATSAPP_BACKEND_URL = 'https://localdify-whatsapp-backend-service-production.up.railway.app';
@@ -43,6 +44,9 @@ export const Integrations: React.FC = () => {
     const [isSavingSettings, setIsSavingSettings] = useState(false);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+    // Template Modal State
+    const [openModal, setOpenModal] = useState<'confirmation' | 'reminder' | 'owner' | null>(null);
 
     const loading = businessLoading;
 
@@ -195,24 +199,48 @@ export const Integrations: React.FC = () => {
                         {/* Notification Settings Card */}
                         <Card className="w-full">
                             <CardContent className="p-6 space-y-6">
-                                {/* Client Notifications */}
                                 <div>
                                     <h3 className="text-base font-semibold mb-4">Client Notifications</h3>
                                     <div className="space-y-4">
-                                        <Toggle
-                                            checked={clientConfirmationEnabled}
-                                            onChange={(value) => handleToggleChange('clientConfirmationEnabled', value)}
-                                            disabled={isSavingSettings}
-                                            label="Send Confirmation Messages"
-                                            description="Automatically send booking confirmation to clients when they make a reservation"
-                                        />
-                                        <Toggle
-                                            checked={clientReminderEnabled}
-                                            onChange={(value) => handleToggleChange('clientReminderEnabled', value)}
-                                            disabled={isSavingSettings}
-                                            label="Send Reminder Messages"
-                                            description="Send appointment reminders to clients before their scheduled time"
-                                        />
+                                        {/* Confirmation Toggle with Customize Button */}
+                                        <div className="space-y-2">
+                                            <Toggle
+                                                checked={clientConfirmationEnabled}
+                                                onChange={(value) => handleToggleChange('clientConfirmationEnabled', value)}
+                                                disabled={isSavingSettings}
+                                                label="Send Confirmation Messages"
+                                                description="Automatically send booking confirmation to clients when they make a reservation"
+                                            />
+                                            <button
+                                                onClick={() => setOpenModal('confirmation')}
+                                                className="ml-auto flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors"
+                                            >
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                                                </svg>
+                                                Customize Template
+                                            </button>
+                                        </div>
+
+                                        {/* Reminder Toggle with Customize Button */}
+                                        <div className="space-y-2">
+                                            <Toggle
+                                                checked={clientReminderEnabled}
+                                                onChange={(value) => handleToggleChange('clientReminderEnabled', value)}
+                                                disabled={isSavingSettings}
+                                                label="Send Reminder Messages"
+                                                description="Send appointment reminders to clients before their scheduled time"
+                                            />
+                                            <button
+                                                onClick={() => setOpenModal('reminder')}
+                                                className="ml-auto flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors"
+                                            >
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                                                </svg>
+                                                Customize Template
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -222,13 +250,24 @@ export const Integrations: React.FC = () => {
                                 {/* Salon Owner Notifications */}
                                 <div>
                                     <h3 className="text-base font-semibold mb-4">Salon Owner Notifications</h3>
-                                    <Toggle
-                                        checked={ownerNotificationEnabled}
-                                        onChange={(value) => handleToggleChange('ownerNotificationEnabled', value)}
-                                        disabled={isSavingSettings}
-                                        label="Receive Owner Notifications"
-                                        description="Get notified when new bookings are made or existing bookings are updated"
-                                    />
+                                    <div className="space-y-2">
+                                        <Toggle
+                                            checked={ownerNotificationEnabled}
+                                            onChange={(value) => handleToggleChange('ownerNotificationEnabled', value)}
+                                            disabled={isSavingSettings}
+                                            label="Receive Owner Notifications"
+                                            description="Get notified when new bookings are made or existing bookings are updated"
+                                        />
+                                        <button
+                                            onClick={() => setOpenModal('owner')}
+                                            className="ml-auto flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors"
+                                        >
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                                            </svg>
+                                            Customize Template
+                                        </button>
+                                    </div>
                                 </div>
 
                                 {/* Divider */}
@@ -261,6 +300,30 @@ export const Integrations: React.FC = () => {
                         </Card>
                     </div>
                 </div>
+            )}
+
+            {/* Template Modals */}
+            {business && (
+                <>
+                    <TemplateModal
+                        isOpen={openModal === 'confirmation'}
+                        onClose={() => setOpenModal(null)}
+                        salonId={business.id}
+                        templateType="confirmation"
+                    />
+                    <TemplateModal
+                        isOpen={openModal === 'reminder'}
+                        onClose={() => setOpenModal(null)}
+                        salonId={business.id}
+                        templateType="reminder"
+                    />
+                    <TemplateModal
+                        isOpen={openModal === 'owner'}
+                        onClose={() => setOpenModal(null)}
+                        salonId={business.id}
+                        templateType="owner"
+                    />
+                </>
             )}
         </div>
     );
