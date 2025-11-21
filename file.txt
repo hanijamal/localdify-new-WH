@@ -103,6 +103,10 @@ ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS whatsapp_messages_sent IN
 ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS clientConfirmationEnabled BOOLEAN DEFAULT TRUE;
 ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS clientReminderEnabled BOOLEAN DEFAULT TRUE;
 ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS ownerNotificationEnabled BOOLEAN DEFAULT TRUE;
+-- WhatsApp template storage (JSONB for multi-language support)
+ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS whatsapp_confirmation_template JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS whatsapp_reminder_template JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS whatsapp_owner_template JSONB DEFAULT '{}'::jsonb;
 -- Remove obsolete columns for WhatsApp templates
 ALTER TABLE public.businesses DROP COLUMN IF EXISTS whatsapp_template_confirmation_en;
 ALTER TABLE public.businesses DROP COLUMN IF EXISTS whatsapp_template_confirmation_ar;
