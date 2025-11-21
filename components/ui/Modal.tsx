@@ -25,20 +25,20 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, footer,
       role="dialog"
     >
       <div
-        className={size === 'full' ? 'w-full h-full' : `w-full ${widthClass}`}
+        className={size === 'full' ? 'w-full h-full' : `w-full ${widthClass} max-h-[90vh]`}
         onClick={e => e.stopPropagation()}
       >
-        <Card className={`animate-in fade-in-0 zoom-in-95 w-full ${isScrollableLayout ? 'max-h-[90vh] flex flex-col' : ''} ${size === 'full' ? 'h-full !rounded-none' : ''}`}>
+        <Card className={`animate-in fade-in-0 zoom-in-95 w-full ${isScrollableLayout ? 'max-h-[90vh] flex flex-col' : 'max-h-[90vh]'} ${size === 'full' ? 'h-full !rounded-none' : ''}`}>
           <CardHeader>
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-bold text-card-foreground">{title}</h2>
-              <button 
-                onClick={onClose} 
+              <button
+                onClick={onClose}
                 className="text-muted-foreground hover:text-foreground transition-colors"
                 aria-label="Close modal"
               >
-                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>

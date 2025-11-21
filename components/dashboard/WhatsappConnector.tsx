@@ -284,22 +284,27 @@ const WhatsappConnector: React.FC<WhatsappConnectorProps> = ({ salonId }) => {
                 isOpen={isQrModalOpen}
                 onClose={() => setIsQrModalOpen(false)}
                 title="Link New Session"
+                widthClass="max-w-lg"
                 footer={<Button variant="ghost" onClick={() => setIsQrModalOpen(false)}>Cancel</Button>}
             >
-                <div className="p-6 text-center space-y-4">
+                <div className="text-center space-y-3">
                     {qrCode ? (
-                        <img src={qrCode} alt="WhatsApp QR Code" className="mx-auto p-2 bg-white rounded-lg shadow-md" />
+                        <img
+                            src={qrCode}
+                            alt="WhatsApp QR Code"
+                            className="mx-auto p-2 bg-white rounded-lg shadow-md max-w-[256px] w-full"
+                        />
                     ) : (
-                        <div className="flex justify-center items-center h-64"><Spinner /></div>
+                        <div className="flex justify-center items-center h-48"><Spinner /></div>
                     )}
-                    <h3 className="text-lg font-semibold">Scan the QR code to sync with WhatsApp</h3>
-                    <ol className="text-sm text-muted-foreground text-left list-decimal list-inside space-y-2">
+                    <h3 className="text-base font-semibold">Scan the QR code to sync with WhatsApp</h3>
+                    <ol className="text-sm text-muted-foreground text-left list-decimal list-inside space-y-1.5">
                         <li>Open WhatsApp on your phone</li>
                         <li>Tap Menu on Android, or Settings on iPhone</li>
                         <li>Tap Linked devices and then Link a device</li>
                         <li>Point your phone at this screen to capture the QR code</li>
                     </ol>
-                    <a href="#" className="text-sm text-primary hover:underline" onClick={handleLinkWithPhoneNumber}>
+                    <a href="#" className="text-sm text-primary hover:underline inline-block" onClick={handleLinkWithPhoneNumber}>
                         Link with phone number
                     </a>
                 </div>
