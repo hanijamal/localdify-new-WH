@@ -23,14 +23,14 @@ const WhatsAppIcon = () => (
 export const Integrations: React.FC = () => {
     const { business, loading: businessLoading } = useBusiness();
     const { t } = useLanguage();
-    
+
     // WhatsApp Test State
     const [testWhatsAppNumber, setTestWhatsAppNumber] = useState('');
     const [isSendingWhatsAppTest, setIsSendingWhatsAppTest] = useState(false);
     const [whatsappStatus, setWhatsappStatus] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
     const loading = businessLoading;
-    
+
     const handleSendTestWhatsApp = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!testWhatsAppNumber || !business) return;
@@ -60,7 +60,7 @@ export const Integrations: React.FC = () => {
             setIsSendingWhatsAppTest(false);
         }
     };
-    
+
     return (
         <div className="space-y-6">
             <div>
@@ -71,40 +71,46 @@ export const Integrations: React.FC = () => {
             {loading ? (
                 <div className="flex justify-center items-center h-48"><Spinner /></div>
             ) : (
-                <div className="max-w-2xl mx-auto">
-                    <Card className="flex flex-col">
-                         <CardHeader>
-                             <div className="flex items-start gap-4">
-                                <WhatsAppIcon />
-                                <div>
-                                    <h2 className="text-xl font-semibold">{t('whatsapp')}</h2>
-                                    <p className="text-sm text-muted-foreground">{t('whatsappDesc')}</p>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="flex-grow">
-                           {business ? <WhatsappConnector salonId={business.id} /> : <div className="flex justify-center items-center h-full"><Spinner /></div>}
-                        </CardContent>
-                        <CardFooter className="flex-col items-stretch gap-4">
-                            <div className="border-t border-border pt-4">
-                                <form onSubmit={handleSendTestWhatsApp} className="space-y-2">
+                <div className="space-y-6">
+                    {/* WhatsApp Header */}
+                    <div className="flex items-center gap-3">
+                        <WhatsAppIcon />
+                        <div>
+                            <h2 className="text-xl font-semibold">{t('whatsapp')}</h2>
+                            <p className="text-sm text-muted-foreground">{t('whatsappDesc')}</p>
+                        </div>
+                    </div>
+
+                    {/* Cards Grid - Side by Side */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* CARD 1: Connection Status */}
+                        <Card className="w-full">
+                            <CardContent className="p-6">
+                                {business ? <WhatsappConnector salonId={business.id} /> : <div className="flex justify-center items-center h-full"><Spinner /></div>}
+                            </CardContent>
+                        </Card>
+
+                        {/* CARD 2: Test Message Section */}
+                        <Card className="w-full">
+                            <CardContent className="p-6">
+                                <form onSubmit={handleSendTestWhatsApp} className="space-y-3">
                                     <p className="text-sm font-medium">Send a Test WhatsApp Message</p>
                                     <div className="flex flex-col sm:flex-row gap-2">
-                                        <Input 
-                                            type="tel" 
-                                            placeholder="+1234567890" 
-                                            value={testWhatsAppNumber} 
-                                            onChange={e => setTestWhatsAppNumber(e.target.value)} 
-                                            required 
+                                        <Input
+                                            type="tel"
+                                            placeholder="+1234567890"
+                                            value={testWhatsAppNumber}
+                                            onChange={e => setTestWhatsAppNumber(e.target.value)}
+                                            required
                                             className="flex-grow"
                                         />
                                         <Button type="submit" variant="secondary" isLoading={isSendingWhatsAppTest} className="w-full sm:w-auto">Send Test</Button>
                                     </div>
                                     {whatsappStatus && <p className={`text-xs mt-1 ${whatsappStatus.type === 'success' ? 'text-green-600' : 'text-destructive'}`}>{whatsappStatus.text}</p>}
                                 </form>
-                            </div>
-                        </CardFooter>
-                    </Card>
+                            </CardContent>
+                        </Card>
+                    </div>
                 </div>
             )}
         </div>

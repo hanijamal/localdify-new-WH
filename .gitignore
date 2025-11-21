@@ -7,39 +7,10 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Dependencies
 node_modules
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
-
-# Build outputs
 dist
 dist-ssr
-build
-.next
-out
-
-# Environment variables (CRITICAL - DO NOT COMMIT)
-.env
-.env.local
-.env.*.local
-.env.development
-.env.production
-*.env
-
-# Supabase secrets (CRITICAL)
-supabase/functions/.env.local
-supabase/.env
-.supabase/
-
-# Backend environment files
-backend/.env
-backend/.env.local
-
-# WhatsApp session data (contains auth credentials)
-backend/auth_info_baileys/
-backend/sessions/
+*.local
 
 # Editor directories and files
 .vscode/*
@@ -51,17 +22,3 @@ backend/sessions/
 *.njsproj
 *.sln
 *.sw?
-
-# OS files
-Thumbs.db
-.DS_Store
-
-# Testing
-coverage
-*.lcov
-.nyc_output
-
-# Temporary files
-*.tmp
-*.temp
-.cache
