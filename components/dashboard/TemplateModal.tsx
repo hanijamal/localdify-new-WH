@@ -139,7 +139,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({ isOpen, onClose, salonId,
                                 dir="rtl"
                             />
                             <p className="text-xs text-muted-foreground mt-2">
-                                Use placeholders like {{`{{customerName}}`}} to insert dynamic data
+                                Use placeholders like {'{{customerName}}'} to insert dynamic data
                             </p>
                         </div>
 
