@@ -49,9 +49,9 @@ export const Integrations: React.FC = () => {
     // Load notification settings from business data
     useEffect(() => {
         if (business) {
-            setClientConfirmationEnabled(business.clientConfirmationEnabled !== false);
-            setClientReminderEnabled(business.clientReminderEnabled !== false);
-            setOwnerNotificationEnabled(business.ownerNotificationEnabled !== false);
+            setClientConfirmationEnabled(business.clientconfirmationenabled !== false);
+            setClientReminderEnabled(business.clientreminderenabled !== false);
+            setOwnerNotificationEnabled(business.ownernotificationenabled !== false);
             setHasUnsavedChanges(false);
             setSaveStatus(null);
         }
@@ -107,9 +107,9 @@ export const Integrations: React.FC = () => {
             const { error } = await supabase
                 .from('businesses')
                 .update({
-                    clientConfirmationEnabled,
-                    clientReminderEnabled,
-                    ownerNotificationEnabled
+                    clientconfirmationenabled: clientConfirmationEnabled,
+                    clientreminderenabled: clientReminderEnabled,
+                    ownernotificationenabled: ownerNotificationEnabled
                 })
                 .eq('id', business.id);
 

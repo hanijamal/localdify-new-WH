@@ -113,9 +113,9 @@ export interface Business {
   email_messages_sent?: number;
   whatsapp_messages_sent?: number;
   // Notification settings
-  clientConfirmationEnabled?: boolean;
-  clientReminderEnabled?: boolean;
-  ownerNotificationEnabled?: boolean;
+  clientconfirmationenabled?: boolean;
+  clientreminderenabled?: boolean;
+  ownernotificationenabled?: boolean;
 }
 
 export interface ServiceCategory {
