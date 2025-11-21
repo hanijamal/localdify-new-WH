@@ -99,6 +99,10 @@ ALTER TABLE public.businesses DROP COLUMN IF EXISTS working_hours;
 ALTER TABLE public.businesses DROP COLUMN IF EXISTS closed_days;
 ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS email_messages_sent INT DEFAULT 0 NOT NULL;
 ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS whatsapp_messages_sent INT DEFAULT 0 NOT NULL;
+-- Notification settings
+ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS clientConfirmationEnabled BOOLEAN DEFAULT TRUE;
+ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS clientReminderEnabled BOOLEAN DEFAULT TRUE;
+ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS ownerNotificationEnabled BOOLEAN DEFAULT TRUE;
 -- Remove obsolete columns for WhatsApp templates
 ALTER TABLE public.businesses DROP COLUMN IF EXISTS whatsapp_template_confirmation_en;
 ALTER TABLE public.businesses DROP COLUMN IF EXISTS whatsapp_template_confirmation_ar;

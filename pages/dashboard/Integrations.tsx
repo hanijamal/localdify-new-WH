@@ -1,11 +1,12 @@
 
 // FIX: Import useState from React to resolve 'Cannot find name' errors.
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useBusiness } from '../../hooks/useBusiness';
 import Card, { CardContent, CardHeader, CardFooter } from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Spinner from '../../components/ui/Spinner';
 import Input from '../../components/ui/Input';
+import Toggle from '../../components/ui/Toggle';
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -20,8 +21,14 @@ const WhatsAppIcon = () => (
     </svg>
 );
 
+const EmailIcon = () => (
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+        <path d="M20 4H4C2.9 4 2.01 4.9 2.01 6L2 18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6C22 4.9 21.1 4 20 4ZM20 8L12 13L4 8V6L12 11L20 6V8Z" />
+    </svg>
+);
+
 export const Integrations: React.FC = () => {
-    const { business, loading: businessLoading } = useBusiness();
+    const { business, loading: businessLoading, refetch } = useBusiness();
     const { t } = useLanguage();
 
     // WhatsApp Test State
@@ -29,7 +36,22 @@ export const Integrations: React.FC = () => {
     const [isSendingWhatsAppTest, setIsSendingWhatsAppTest] = useState(false);
     const [whatsappStatus, setWhatsappStatus] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
+    // Notification Settings State
+    const [clientConfirmationEnabled, setClientConfirmationEnabled] = useState(true);
+    const [clientReminderEnabled, setClientReminderEnabled] = useState(true);
+    const [ownerNotificationEnabled, setOwnerNotificationEnabled] = useState(true);
+    const [isSavingSettings, setIsSavingSettings] = useState(false);
+
     const loading = businessLoading;
+
+    // Load notification settings from business data
+    useEffect(() => {
+        if (business) {
+            setClientConfirmationEnabled(business.clientConfirmationEnabled !== false);
+            setClientReminderEnabled(business.clientReminderEnabled !== false);
+            setOwnerNotificationEnabled(business.ownerNotificationEnabled !== false);
+        }
+    }, [business]);
 
     const handleSendTestWhatsApp = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -61,6 +83,37 @@ export const Integrations: React.FC = () => {
         }
     };
 
+    const handleNotificationSettingChange = async (field: 'clientConfirmationEnabled' | 'clientReminderEnabled' | 'ownerNotificationEnabled', value: boolean) => {
+        if (!business) return;
+
+        // Update local state immediately for responsive UI
+        if (field === 'clientConfirmationEnabled') setClientConfirmationEnabled(value);
+        if (field === 'clientReminderEnabled') setClientReminderEnabled(value);
+        if (field === 'ownerNotificationEnabled') setOwnerNotificationEnabled(value);
+
+        setIsSavingSettings(true);
+
+        try {
+            const { error } = await supabase
+                .from('businesses')
+                .update({ [field]: value })
+                .eq('id', business.id);
+
+            if (error) throw error;
+
+            // Refetch business data to ensure consistency
+            await refetch();
+        } catch (err: any) {
+            console.error('Failed to update notification settings:', err);
+            // Revert local state on error
+            if (field === 'clientConfirmationEnabled') setClientConfirmationEnabled(!value);
+            if (field === 'clientReminderEnabled') setClientReminderEnabled(!value);
+            if (field === 'ownerNotificationEnabled') setOwnerNotificationEnabled(!value);
+        } finally {
+            setIsSavingSettings(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div>
@@ -71,43 +124,99 @@ export const Integrations: React.FC = () => {
             {loading ? (
                 <div className="flex justify-center items-center h-48"><Spinner /></div>
             ) : (
-                <div className="space-y-6">
-                    {/* WhatsApp Header */}
-                    <div className="flex items-center gap-3">
-                        <WhatsAppIcon />
-                        <div>
-                            <h2 className="text-xl font-semibold">{t('whatsapp')}</h2>
-                            <p className="text-sm text-muted-foreground">{t('whatsappDesc')}</p>
+                <div className="space-y-8">
+                    {/* WhatsApp Section */}
+                    <div className="space-y-4">
+                        {/* WhatsApp Header */}
+                        <div className="flex items-center gap-3">
+                            <WhatsAppIcon />
+                            <div>
+                                <h2 className="text-xl font-semibold">{t('whatsapp')}</h2>
+                                <p className="text-sm text-muted-foreground">{t('whatsappDesc')}</p>
+                            </div>
+                        </div>
+
+                        {/* Cards Grid - Side by Side */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {/* CARD 1: Connection Status */}
+                            <Card className="w-full">
+                                <CardContent className="p-6">
+                                    {business ? <WhatsappConnector salonId={business.id} /> : <div className="flex justify-center items-center h-full"><Spinner /></div>}
+                                </CardContent>
+                            </Card>
+
+                            {/* CARD 2: Test Message Section */}
+                            <Card className="w-full">
+                                <CardContent className="p-6">
+                                    <form onSubmit={handleSendTestWhatsApp} className="space-y-3">
+                                        <p className="text-sm font-medium">Send a Test WhatsApp Message</p>
+                                        <div className="flex flex-col sm:flex-row gap-2">
+                                            <Input
+                                                type="tel"
+                                                placeholder="+1234567890"
+                                                value={testWhatsAppNumber}
+                                                onChange={e => setTestWhatsAppNumber(e.target.value)}
+                                                required
+                                                className="flex-grow"
+                                            />
+                                            <Button type="submit" variant="secondary" isLoading={isSendingWhatsAppTest} className="w-full sm:w-auto">Send Test</Button>
+                                        </div>
+                                        {whatsappStatus && <p className={`text-xs mt-1 ${whatsappStatus.type === 'success' ? 'text-green-600' : 'text-destructive'}`}>{whatsappStatus.text}</p>}
+                                    </form>
+                                </CardContent>
+                            </Card>
                         </div>
                     </div>
 
-                    {/* Cards Grid - Side by Side */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* CARD 1: Connection Status */}
-                        <Card className="w-full">
-                            <CardContent className="p-6">
-                                {business ? <WhatsappConnector salonId={business.id} /> : <div className="flex justify-center items-center h-full"><Spinner /></div>}
-                            </CardContent>
-                        </Card>
+                    {/* Template Customization Section */}
+                    <div className="space-y-4">
+                        {/* Template Header */}
+                        <div className="flex items-center gap-3">
+                            <EmailIcon />
+                            <div>
+                                <h2 className="text-xl font-semibold">Template Customization</h2>
+                                <p className="text-sm text-muted-foreground">Configure notification settings for your business</p>
+                            </div>
+                        </div>
 
-                        {/* CARD 2: Test Message Section */}
+                        {/* Notification Settings Card */}
                         <Card className="w-full">
-                            <CardContent className="p-6">
-                                <form onSubmit={handleSendTestWhatsApp} className="space-y-3">
-                                    <p className="text-sm font-medium">Send a Test WhatsApp Message</p>
-                                    <div className="flex flex-col sm:flex-row gap-2">
-                                        <Input
-                                            type="tel"
-                                            placeholder="+1234567890"
-                                            value={testWhatsAppNumber}
-                                            onChange={e => setTestWhatsAppNumber(e.target.value)}
-                                            required
-                                            className="flex-grow"
+                            <CardContent className="p-6 space-y-6">
+                                {/* Client Notifications */}
+                                <div>
+                                    <h3 className="text-base font-semibold mb-4">Client Notifications</h3>
+                                    <div className="space-y-4">
+                                        <Toggle
+                                            checked={clientConfirmationEnabled}
+                                            onChange={(value) => handleNotificationSettingChange('clientConfirmationEnabled', value)}
+                                            disabled={isSavingSettings}
+                                            label="Send Confirmation Messages"
+                                            description="Automatically send booking confirmation to clients when they make a reservation"
                                         />
-                                        <Button type="submit" variant="secondary" isLoading={isSendingWhatsAppTest} className="w-full sm:w-auto">Send Test</Button>
+                                        <Toggle
+                                            checked={clientReminderEnabled}
+                                            onChange={(value) => handleNotificationSettingChange('clientReminderEnabled', value)}
+                                            disabled={isSavingSettings}
+                                            label="Send Reminder Messages"
+                                            description="Send appointment reminders to clients before their scheduled time"
+                                        />
                                     </div>
-                                    {whatsappStatus && <p className={`text-xs mt-1 ${whatsappStatus.type === 'success' ? 'text-green-600' : 'text-destructive'}`}>{whatsappStatus.text}</p>}
-                                </form>
+                                </div>
+
+                                {/* Divider */}
+                                <div className="border-t border-border"></div>
+
+                                {/* Salon Owner Notifications */}
+                                <div>
+                                    <h3 className="text-base font-semibold mb-4">Salon Owner Notifications</h3>
+                                    <Toggle
+                                        checked={ownerNotificationEnabled}
+                                        onChange={(value) => handleNotificationSettingChange('ownerNotificationEnabled', value)}
+                                        disabled={isSavingSettings}
+                                        label="Receive Owner Notifications"
+                                        description="Get notified when new bookings are made or existing bookings are updated"
+                                    />
+                                </div>
                             </CardContent>
                         </Card>
                     </div>

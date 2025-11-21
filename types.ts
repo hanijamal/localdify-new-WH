@@ -37,21 +37,21 @@ export interface Template {
 
 // FIX: Define and export the ThemeSettings interface for business theme customization.
 export interface ThemeSettings {
-    templateId: string;
-    primaryColor: string;
-    backgroundColor: string;
-    cardColor: string;
-    textColor: string;
-    fontFamily: string;
-    borderRadius: number;
-    customCss: string;
-    secondaryColor?: string;
-    coverImageUrl?: string;
+  templateId: string;
+  primaryColor: string;
+  backgroundColor: string;
+  cardColor: string;
+  textColor: string;
+  fontFamily: string;
+  borderRadius: number;
+  customCss: string;
+  secondaryColor?: string;
+  coverImageUrl?: string;
 }
 
 export interface EmailTemplate {
-    subject: string;
-    body: string;
+  subject: string;
+  body: string;
 }
 
 export interface Location {
@@ -112,6 +112,10 @@ export interface Business {
   };
   email_messages_sent?: number;
   whatsapp_messages_sent?: number;
+  // Notification settings
+  clientConfirmationEnabled?: boolean;
+  clientReminderEnabled?: boolean;
+  ownerNotificationEnabled?: boolean;
 }
 
 export interface ServiceCategory {
@@ -170,62 +174,62 @@ export interface ShortLink {
 }
 
 export enum TicketStatus {
-    Open = "open",
-    InProgress = "in_progress",
-    Closed = "closed"
+  Open = "open",
+  InProgress = "in_progress",
+  Closed = "closed"
 }
 
 export interface TicketMessage {
-    id: string;
-    ticketId: string;
-    userId: string;
-    userName: string;
-    content: string;
-    createdAt: string;
+  id: string;
+  ticketId: string;
+  userId: string;
+  userName: string;
+  content: string;
+  createdAt: string;
 }
 
 export interface SupportTicket {
-    id: string;
-    userId: string;
-    userEmail: string;
-    userName: string;
-    subject: string;
-    status: TicketStatus;
-    createdAt: string;
-    updatedAt: string;
-    messages: TicketMessage[];
-    businessName?: string;
+  id: string;
+  userId: string;
+  userEmail: string;
+  userName: string;
+  subject: string;
+  status: TicketStatus;
+  createdAt: string;
+  updatedAt: string;
+  messages: TicketMessage[];
+  businessName?: string;
 }
 
 export interface PayPalConfig {
-    clientId: string;
-    clientSecret: string;
+  clientId: string;
+  clientSecret: string;
 }
 
 export interface SystemSetting<T> {
-    key: string;
-    value: T;
+  key: string;
+  value: T;
 }
 
 export interface PlanSetting {
-    price: string;
-    status: 'available' | 'coming_soon';
+  price: string;
+  status: 'available' | 'coming_soon';
 }
 
 export interface SubscriptionPlansSetting {
-    pro: PlanSetting;
-    business: PlanSetting;
+  pro: PlanSetting;
+  business: PlanSetting;
 }
 
 export interface PaymentHistory {
-    id: string;
-    userId: string;
-    createdAt: string;
-    amount: number;
-    currency: string;
-    paymentProvider: string;
-    providerTransactionId: string;
-    description: string;
+  id: string;
+  userId: string;
+  createdAt: string;
+  amount: number;
+  currency: string;
+  paymentProvider: string;
+  providerTransactionId: string;
+  description: string;
 }
 // FIX: Add Page interface for CMS functionality
 export interface Page {
@@ -239,15 +243,15 @@ export interface Page {
   created_at?: string;
 }
 export interface RegistrationCounterSetting {
-    enabled: boolean;
-    message: string;
-    current: number;
-    total: number;
+  enabled: boolean;
+  message: string;
+  current: number;
+  total: number;
 }
 
 export interface PublicSystemSettings {
-    registrationCounter?: Partial<RegistrationCounterSetting>;
-    dashboardVideoUrl?: string | null;
+  registrationCounter?: Partial<RegistrationCounterSetting>;
+  dashboardVideoUrl?: string | null;
 }
 
 export interface Plan {
