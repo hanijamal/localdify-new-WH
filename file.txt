@@ -1137,3 +1137,48 @@ SELECT cron.schedule(
   '0 * * * *',
   'DELETE FROM public.rate_limits WHERE created_at < now() - interval ''1 hour'''
 );
+
+-- Function to claim pending WhatsApp jobs atomically
+-- This prevents race conditions where the same job is processed multiple times
+-- Uses FOR UPDATE SKIP LOCKED to ensure only one worker processes each job
+CREATE OR REPLACE FUNCTION public.claim_pending_jobs(max_jobs INT DEFAULT 5)
+RETURNS TABLE (
+  id uuid,
+  salon_id uuid,
+  type text,
+  payload jsonb,
+  status text,
+  attempts int,
+  error text,
+  created_at timestamptz,
+  updated_at timestamptz,
+  scheduled_at timestamptz
+) 
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN QUERY
+  UPDATE whatsapp_jobs
+  SET status = 'processing', updated_at = NOW()
+  WHERE whatsapp_jobs.id IN (
+    SELECT whatsapp_jobs.id
+    FROM whatsapp_jobs
+    WHERE whatsapp_jobs.status = 'pending'
+      AND whatsapp_jobs.scheduled_at <= NOW()
+    ORDER BY whatsapp_jobs.scheduled_at ASC
+    LIMIT max_jobs
+    FOR UPDATE SKIP LOCKED
+  )
+  RETURNING 
+    whatsapp_jobs.id,
+    whatsapp_jobs.salon_id,
+    whatsapp_jobs.type,
+    whatsapp_jobs.payload,
+    whatsapp_jobs.status,
+    whatsapp_jobs.attempts,
+    whatsapp_jobs.error,
+    whatsapp_jobs.created_at,
+    whatsapp_jobs.updated_at,
+    whatsapp_jobs.scheduled_at;
+END;
+$$;

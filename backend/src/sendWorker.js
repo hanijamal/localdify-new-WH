@@ -151,16 +151,32 @@ export async function startWorker() {
   logger.info('Starting worker loop...');
   setInterval(async () => {
     try {
-      const { data: jobs, error } = await supabaseAdmin
-        .from('whatsapp_jobs')
-        .select('*')
-        .eq('status', 'pending')
-        .lte('scheduled_at', new Date().toISOString())
-        .order('scheduled_at', { ascending: true })
-        .limit(5);
+      // Use raw SQL with FOR UPDATE SKIP LOCKED to prevent race conditions
+      // This ensures only one worker processes each job
+      const { data: jobs, error } = await supabaseAdmin.rpc('claim_pending_jobs', {
+        max_jobs: 5
+      });
 
       if (error) {
-        logger.error({ error: error.message }, 'Error fetching jobs');
+        // Fallback to old method if RPC doesn't exist
+        const { data: fallbackJobs, error: fallbackError } = await supabaseAdmin
+          .from('whatsapp_jobs')
+          .select('*')
+          .eq('status', 'pending')
+          .lte('scheduled_at', new Date().toISOString())
+          .order('scheduled_at', { ascending: true })
+          .limit(5);
+
+        if (fallbackError) {
+          logger.error({ error: fallbackError.message }, 'Error fetching jobs');
+          return;
+        }
+
+        if (!fallbackJobs || fallbackJobs.length === 0) return;
+
+        for (const job of fallbackJobs) {
+          await processJob(job);
+        }
         return;
       }
 
