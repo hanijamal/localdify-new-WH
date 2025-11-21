@@ -20,7 +20,7 @@ type ConnectionStatus = 'disconnected' | 'pending' | 'connected' | 'error' | 'lo
 const WhatsappConnector: React.FC<WhatsappConnectorProps> = ({ salonId }) => {
     const { t } = useLanguage();
     const [status, setStatus] = useState<ConnectionStatus>('disconnected');
-    const [checkingStatus, setCheckingStatus] = useState(true);
+    const [checkingStatus, setCheckingStatus] = useState(false); // Changed from true to false for instant UI
     const [qrCode, setQrCode] = useState<string | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [isQrModalOpen, setIsQrModalOpen] = useState(false);
@@ -46,34 +46,46 @@ const WhatsappConnector: React.FC<WhatsappConnectorProps> = ({ salonId }) => {
         }
     };
 
+
     const getStatus = useCallback(async () => {
         if (BACKEND_URL.includes('YOUR_BACKEND_URL_HERE')) {
             setStatus('error');
             setErrorMessage('Backend URL is not configured. Please update the WhatsappConnector.tsx file.');
+            setCheckingStatus(false);
             return 'error';
         }
-        setCheckingStatus(true);
+
         try {
-            const response = await fetch(`${BACKEND_URL}/api/whatsapp/status?salon_id=${salonId}`);
+            // Add timeout to prevent hanging
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+
+            const response = await fetch(`${BACKEND_URL}/api/whatsapp/status?salon_id=${salonId}`, {
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+
             if (!response.ok) {
                 const errorMsg = await handleFetchError(response, `Failed to fetch status (${response.status})`);
                 throw new Error(errorMsg);
             }
             const data = await response.json();
             setStatus(data.status);
+            setCheckingStatus(false);
             return data.status;
         } catch (err: any) {
             console.error('Status fetch error:', err);
-            // Only set error state if it's not already in an error state to avoid loops
-            if (status !== 'error') {
-                setStatus('error');
-                setErrorMessage(err.message);
+            // On error, assume disconnected instead of showing error
+            if (err.name === 'AbortError') {
+                setStatus('disconnected');
+            } else {
+                setStatus('disconnected'); // Optimistic: assume disconnected on error
             }
-            return 'error';
-        } finally {
             setCheckingStatus(false);
+            return 'disconnected';
         }
-    }, [salonId, status]);
+    }, [salonId]); // Removed 'status' dependency to prevent infinite loops
+
 
     const connect = async (force = false) => {
         if (BACKEND_URL.includes('YOUR_BACKEND_URL_HERE')) {
@@ -113,7 +125,7 @@ const WhatsappConnector: React.FC<WhatsappConnectorProps> = ({ salonId }) => {
             setErrorMessage(err.message);
         }
     };
-    
+
     const disconnect = async () => {
         setStatus('disconnecting');
         setErrorMessage(null);
@@ -141,8 +153,10 @@ const WhatsappConnector: React.FC<WhatsappConnectorProps> = ({ salonId }) => {
     };
 
     useEffect(() => {
-        getStatus();
-         // eslint-disable-next-line react-hooks/exhaustive-deps
+        // Only show checking status briefly on initial load
+        setCheckingStatus(true);
+        getStatus().finally(() => setCheckingStatus(false));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [salonId]);
 
     useEffect(() => {
@@ -215,7 +229,7 @@ const WhatsappConnector: React.FC<WhatsappConnectorProps> = ({ salonId }) => {
             case 'pending':
                 return <div className="flex flex-col items-center justify-center p-8"><Spinner /><p className="mt-2 text-sm text-muted-foreground">Connecting...</p></div>;
             case 'disconnecting':
-                 return <div className="flex flex-col items-center justify-center p-8"><Spinner /><p className="mt-2 text-sm text-muted-foreground">Disconnecting...</p></div>;
+                return <div className="flex flex-col items-center justify-center p-8"><Spinner /><p className="mt-2 text-sm text-muted-foreground">Disconnecting...</p></div>;
             case 'connected':
                 return (
                     <div className="text-center p-8 space-y-3">
@@ -228,10 +242,10 @@ const WhatsappConnector: React.FC<WhatsappConnectorProps> = ({ salonId }) => {
                     </div>
                 );
             case 'error':
-                 return (
+                return (
                     <div className="text-center p-8 space-y-4">
                         <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto">
-                           <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         </div>
                         <h3 className="text-lg font-semibold text-destructive">Connection Error</h3>
                         <p className="text-sm text-muted-foreground">{errorMessage || 'An unknown error occurred.'}</p>
@@ -243,7 +257,7 @@ const WhatsappConnector: React.FC<WhatsappConnectorProps> = ({ salonId }) => {
             default:
                 return (
                     <div className="text-center p-8 space-y-3">
-                         <div className="w-16 h-16 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center mx-auto">
+                        <div className="w-16 h-16 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center mx-auto">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 5.636a9 9 0 010 12.728m-12.728 0a9 9 0 010-12.728m12.728 0L5.636 18.364" /></svg>
                         </div>
                         <h3 className="text-lg font-semibold">WhatsApp Disconnected</h3>
@@ -261,7 +275,7 @@ const WhatsappConnector: React.FC<WhatsappConnectorProps> = ({ salonId }) => {
                 );
         }
     };
-    
+
     return (
         <>
             {renderMainContent()}
