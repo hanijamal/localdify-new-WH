@@ -41,6 +41,8 @@ export const Integrations: React.FC = () => {
     const [clientReminderEnabled, setClientReminderEnabled] = useState(true);
     const [ownerNotificationEnabled, setOwnerNotificationEnabled] = useState(true);
     const [isSavingSettings, setIsSavingSettings] = useState(false);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
     const loading = businessLoading;
 
@@ -50,6 +52,8 @@ export const Integrations: React.FC = () => {
             setClientConfirmationEnabled(business.clientConfirmationEnabled !== false);
             setClientReminderEnabled(business.clientReminderEnabled !== false);
             setOwnerNotificationEnabled(business.ownerNotificationEnabled !== false);
+            setHasUnsavedChanges(false);
+            setSaveStatus(null);
         }
     }, [business]);
 
@@ -83,32 +87,41 @@ export const Integrations: React.FC = () => {
         }
     };
 
-    const handleNotificationSettingChange = async (field: 'clientConfirmationEnabled' | 'clientReminderEnabled' | 'ownerNotificationEnabled', value: boolean) => {
-        if (!business) return;
-
-        // Update local state immediately for responsive UI
+    const handleToggleChange = (field: 'clientConfirmationEnabled' | 'clientReminderEnabled' | 'ownerNotificationEnabled', value: boolean) => {
+        // Just update local state, don't save to database yet
         if (field === 'clientConfirmationEnabled') setClientConfirmationEnabled(value);
         if (field === 'clientReminderEnabled') setClientReminderEnabled(value);
         if (field === 'ownerNotificationEnabled') setOwnerNotificationEnabled(value);
 
+        setHasUnsavedChanges(true);
+        setSaveStatus(null);
+    };
+
+    const handleSaveSettings = async () => {
+        if (!business) return;
+
         setIsSavingSettings(true);
+        setSaveStatus(null);
 
         try {
             const { error } = await supabase
                 .from('businesses')
-                .update({ [field]: value })
+                .update({
+                    clientConfirmationEnabled,
+                    clientReminderEnabled,
+                    ownerNotificationEnabled
+                })
                 .eq('id', business.id);
 
             if (error) throw error;
 
             // Refetch business data to ensure consistency
             await refetch();
+            setHasUnsavedChanges(false);
+            setSaveStatus({ type: 'success', text: 'Settings saved successfully!' });
         } catch (err: any) {
             console.error('Failed to update notification settings:', err);
-            // Revert local state on error
-            if (field === 'clientConfirmationEnabled') setClientConfirmationEnabled(!value);
-            if (field === 'clientReminderEnabled') setClientReminderEnabled(!value);
-            if (field === 'ownerNotificationEnabled') setOwnerNotificationEnabled(!value);
+            setSaveStatus({ type: 'error', text: 'Failed to save settings. Please try again.' });
         } finally {
             setIsSavingSettings(false);
         }
@@ -188,14 +201,14 @@ export const Integrations: React.FC = () => {
                                     <div className="space-y-4">
                                         <Toggle
                                             checked={clientConfirmationEnabled}
-                                            onChange={(value) => handleNotificationSettingChange('clientConfirmationEnabled', value)}
+                                            onChange={(value) => handleToggleChange('clientConfirmationEnabled', value)}
                                             disabled={isSavingSettings}
                                             label="Send Confirmation Messages"
                                             description="Automatically send booking confirmation to clients when they make a reservation"
                                         />
                                         <Toggle
                                             checked={clientReminderEnabled}
-                                            onChange={(value) => handleNotificationSettingChange('clientReminderEnabled', value)}
+                                            onChange={(value) => handleToggleChange('clientReminderEnabled', value)}
                                             disabled={isSavingSettings}
                                             label="Send Reminder Messages"
                                             description="Send appointment reminders to clients before their scheduled time"
@@ -211,11 +224,38 @@ export const Integrations: React.FC = () => {
                                     <h3 className="text-base font-semibold mb-4">Salon Owner Notifications</h3>
                                     <Toggle
                                         checked={ownerNotificationEnabled}
-                                        onChange={(value) => handleNotificationSettingChange('ownerNotificationEnabled', value)}
+                                        onChange={(value) => handleToggleChange('ownerNotificationEnabled', value)}
                                         disabled={isSavingSettings}
                                         label="Receive Owner Notifications"
                                         description="Get notified when new bookings are made or existing bookings are updated"
                                     />
+                                </div>
+
+                                {/* Divider */}
+                                <div className="border-t border-border"></div>
+
+                                {/* Save Button and Status */}
+                                <div className="flex items-center justify-between gap-4">
+                                    <div className="flex-1">
+                                        {saveStatus && (
+                                            <p className={`text-sm ${saveStatus.type === 'success' ? 'text-green-600' : 'text-destructive'}`}>
+                                                {saveStatus.text}
+                                            </p>
+                                        )}
+                                        {hasUnsavedChanges && !saveStatus && (
+                                            <p className="text-sm text-muted-foreground">
+                                                You have unsaved changes
+                                            </p>
+                                        )}
+                                    </div>
+                                    <Button
+                                        onClick={handleSaveSettings}
+                                        variant="primary"
+                                        isLoading={isSavingSettings}
+                                        disabled={!hasUnsavedChanges}
+                                    >
+                                        Save Changes
+                                    </Button>
                                 </div>
                             </CardContent>
                         </Card>
