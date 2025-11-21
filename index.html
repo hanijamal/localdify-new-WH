@@ -1,0 +1,191 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>localDify - Simplified Booking for Local Businesses</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inconsolata:wght@400;700&family=Inter:wght@400;700;900&family=Lora:ital,wght@0,400;0,700;1,400&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inconsolata:wght@400;700&family=Inter:wght@400;700;900&family=Lora:ital,wght@0,400;0,700;1,400&display=swap"></noscript>
+    <style>
+      html {
+        scroll-behavior: smooth;
+      }
+      :root {
+        --background: #F4F4F4;
+        --foreground: #000000;
+        --card: #ffffff;
+        --card-foreground: #000000;
+        --popover: #ffffff;
+        --popover-foreground: #000000;
+        --primary: #00cc61;
+        --primary-foreground: #000000;
+        --secondary: #004050;
+        --secondary-foreground: #ffffff;
+        --muted: #DFF9EB;
+        --muted-foreground: #005030;
+        --accent: #DFF9EB;
+        --accent-foreground: #000000;
+        --destructive: #EF4444;
+        --destructive-foreground: #ffffff;
+        --border: #CFE8DE;
+        --input: #CFE8DE;
+        --ring: #00cc61;
+        --radius: 0.75rem;
+        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+        --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+      }
+
+      .dark {
+        --background: #001a20;
+        --foreground: #ECFDF5;
+        --card: #002833;
+        --card-foreground: #ECFDF5;
+        --popover: #002833;
+        --popover-foreground: #ECFDF5;
+        --primary: #00cc61;
+        --primary-foreground: #000000;
+        --secondary: #005064;
+        --secondary-foreground: #ECFDF5;
+        --muted: #003845;
+        --muted-foreground: #94a3b8;
+        --accent: #004050;
+        --accent-foreground: #ECFDF5;
+        --destructive: #EF4444;
+        --destructive-foreground: #ffffff;
+        --border: #004050;
+        --input: #004050;
+        --ring: #00cc61;
+        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.2);
+        --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.2), 0 1px 2px -1px rgb(0 0 0 / 0.2);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.2), 0 2px 4px -2px rgb(0 0 0 / 0.2);
+        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.2), 0 4px 6px -4px rgb(0 0 0 / 0.2);
+        --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.2), 0 8px 10px -6px rgb(0 0 0 / 0.2);
+        --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.4);
+      }
+      .is-last-bookable-day {
+        animation: pulse-glow 2s infinite;
+        border: 1px solid var(--primary);
+      }
+      html[dir="rtl"] body {
+        font-family: 'Amiri', serif;
+      }
+    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              border: 'var(--border)',
+              input: 'var(--input)',
+              ring: 'var(--ring)',
+              background: 'var(--background)',
+              foreground: 'var(--foreground)',
+              primary: {
+                DEFAULT: 'var(--primary)',
+                foreground: 'var(--primary-foreground)',
+              },
+              secondary: {
+                DEFAULT: 'var(--secondary)',
+                foreground: 'var(--secondary-foreground)',
+              },
+              destructive: {
+                DEFAULT: 'var(--destructive)',
+                foreground: 'var(--destructive-foreground)',
+              },
+              muted: {
+                DEFAULT: 'var(--muted)',
+                foreground: 'var(--muted-foreground)',
+              },
+              accent: {
+                DEFAULT: 'var(--accent)',
+                foreground: 'var(--accent-foreground)',
+              },
+              popover: {
+                DEFAULT: 'var(--popover)',
+                foreground: 'var(--popover-foreground)',
+              },
+              card: {
+                DEFAULT: 'var(--card)',
+                foreground: 'var(--card-foreground)',
+              },
+            },
+            borderRadius: {
+              xl: "calc(var(--radius) + 4px)",
+              lg: "var(--radius)",
+              md: "calc(var(--radius) - 2px)",
+              sm: "calc(var(--radius) - 4px)",
+            },
+            fontFamily: {
+              sans: ['Inter', 'ui-sans-serif', 'system-ui'],
+              serif: ['Lora', 'ui-serif', 'Georgia'],
+            },
+            boxShadow: {
+              sm: 'var(--shadow-sm)',
+              DEFAULT: 'var(--shadow)',
+              md: 'var(--shadow-md)',
+              lg: 'var(--shadow-lg)',
+              xl: 'var(--shadow-xl)',
+              '2xl': 'var(--shadow-2xl)',
+            },
+            animation: {
+              'fade-in': 'fadeIn 1s ease-out forwards',
+              'fade-in-up': 'fadeInUp 1s ease-out forwards',
+              'pulse-glow': 'pulseGlow 2s infinite',
+            },
+            keyframes: {
+              fadeIn: {
+                '0%': { opacity: '0' },
+                '100%': { opacity: '1' },
+              },
+              fadeInUp: {
+                '0%': { opacity: '0', transform: 'translateY(20px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              },
+              pulseGlow: {
+                '0%, 100%': { boxShadow: '0 0 0 0 rgba(0, 204, 97, 0.4)' },
+                '70%': { boxShadow: '0 0 0 7px rgba(0, 204, 97, 0)' },
+              },
+            },
+          },
+        },
+      }
+    </script>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.6",
+    "@supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.81.1",
+    "qrcode": "https://aistudiocdn.com/qrcode@^1.5.4",
+    "dotenv/": "https://aistudiocdn.com/dotenv@^17.2.3/",
+    "express": "https://aistudiocdn.com/express@^5.1.0",
+    "cors": "https://aistudiocdn.com/cors@^2.8.5",
+    "express-rate-limit": "https://aistudiocdn.com/express-rate-limit@^8.2.1",
+    "@whiskeysockets/baileys": "https://aistudiocdn.com/@whiskeysockets/baileys@^6.7.21",
+    "@hapi/boom": "https://aistudiocdn.com/@hapi/boom@^10.0.1",
+    "node-cron": "https://aistudiocdn.com/node-cron@^4.2.1",
+    "pino": "https://aistudiocdn.com/pino@^10.1.0",
+    "p-retry": "https://aistudiocdn.com/p-retry@^7.1.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-background text-foreground font-sans">
+    <div id="root"></div>
+    
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,100 @@
+-- This schema is designed for the WhatsApp Web (Baileys) automation feature.
+
+-- Table to store session information for each salon
+CREATE TABLE IF NOT EXISTS public.whatsapp_sessions (
+    salon_id uuid NOT NULL PRIMARY KEY,
+    status text DEFAULT 'disconnected' NOT NULL,
+    qr_data_url text, -- Field required by backend to show QR in frontend
+    session_key text, -- Path to session file if needed, though code uses fixed path
+    connected_at timestamptz,
+    disconnected_at timestamptz,
+    created_at timestamptz DEFAULT now() NOT NULL,
+    updated_at timestamptz DEFAULT now() NOT NULL,
+    CONSTRAINT whatsapp_sessions_salon_id_fkey FOREIGN KEY (salon_id) REFERENCES public.businesses(id) ON DELETE CASCADE
+);
+
+-- RLS for whatsapp_sessions
+ALTER TABLE public.whatsapp_sessions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow service_role to manage sessions" ON public.whatsapp_sessions;
+CREATE POLICY "Allow service_role to manage sessions" ON public.whatsapp_sessions FOR ALL TO service_role USING (true);
+
+-- Table to act as a durable job queue for sending messages
+CREATE TABLE IF NOT EXISTS public.whatsapp_jobs (
+    id bigserial PRIMARY KEY,
+    salon_id uuid NOT NULL,
+    type text NOT NULL, -- e.g., 'confirmation', 'reminder'
+    payload jsonb NOT NULL,
+    status text DEFAULT 'pending' NOT NULL,
+    attempts integer DEFAULT 0 NOT NULL,
+    error text,
+    scheduled_at timestamptz DEFAULT now() NOT NULL,
+    last_attempt_at timestamptz,
+    created_at timestamptz DEFAULT now() NOT NULL,
+    updated_at timestamptz DEFAULT now() NOT NULL,
+    CONSTRAINT whatsapp_jobs_salon_id_fkey FOREIGN KEY (salon_id) REFERENCES public.businesses(id) ON DELETE CASCADE
+);
+
+-- Index for the worker to efficiently query pending jobs
+CREATE INDEX IF NOT EXISTS whatsapp_jobs_pending_idx ON public.whatsapp_jobs (status, scheduled_at) WHERE status = 'pending';
+
+-- RLS for whatsapp_jobs
+ALTER TABLE public.whatsapp_jobs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow service_role to manage jobs" ON public.whatsapp_jobs;
+CREATE POLICY "Allow service_role to manage jobs" ON public.whatsapp_jobs FOR ALL TO service_role USING (true);
+
+-- Trigger to automatically update the 'updated_at' timestamp on whatsapp_sessions
+CREATE OR REPLACE FUNCTION public.handle_whatsapp_sessions_update()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS on_whatsapp_sessions_update ON public.whatsapp_sessions;
+CREATE TRIGGER on_whatsapp_sessions_update
+BEFORE UPDATE ON public.whatsapp_sessions
+FOR EACH ROW
+EXECUTE FUNCTION public.handle_whatsapp_sessions_update();
+
+-- RPC Function for the cron job to find bookings needing a reminder
+CREATE OR REPLACE FUNCTION public.get_bookings_for_reminder_jobs(start_date date, end_date date)
+RETURNS TABLE(
+    id uuid,
+    business_id uuid,
+    customer_name text,
+    customer_phone text,
+    date date,
+    "time" time,
+    business_name text
+)
+LANGUAGE sql
+AS $$
+  SELECT
+    b.id,
+    b.business_id,
+    b.customer_name,
+    b.customer_phone,
+    b.date,
+    b.time,
+    biz.name as business_name
+  FROM public.bookings b
+  JOIN public.businesses biz ON b.business_id = biz.id
+  WHERE b.status = 'approved'
+    AND b.date >= start_date
+    AND b.date <= end_date
+    AND NOT EXISTS (
+      SELECT 1
+      FROM public.whatsapp_jobs wj
+      WHERE wj.type = 'reminder'
+        AND wj.payload ->> 'customerPhone' = b.customer_phone
+        AND (wj.payload ->> 'date')::date = b.date
+    );
+$$;
+
+-- Storage policies for the whatsapp-sessions bucket.
+DROP POLICY IF EXISTS "Allow service_role full access to whatsapp-sessions" ON storage.objects;
+CREATE POLICY "Allow service_role full access to whatsapp-sessions"
+ON storage.objects FOR ALL
+TO service_role
+USING ( bucket_id = 'whatsapp-sessions' );

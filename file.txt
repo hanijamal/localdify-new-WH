@@ -1,0 +1,1096 @@
+-- Create custom types only if they don't already exist.
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
+        CREATE TYPE public.user_role AS ENUM ('business_owner', 'admin');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_status') THEN
+        CREATE TYPE public.user_status AS ENUM ('active', 'suspended');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'booking_status') THEN
+        CREATE TYPE public.booking_status AS ENUM ('pending', 'approved', 'canceled');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ticket_status') THEN
+        CREATE TYPE public.ticket_status AS ENUM ('open', 'in_progress', 'closed');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'day_of_week') THEN
+        CREATE TYPE public.day_of_week AS ENUM ('sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday');
+    END IF;
+END $$;
+
+-- Function to check if the current user is an admin.
+-- This is a SECURITY DEFINER function to bypass RLS and avoid infinite recursion
+-- in admin policies. It's rewritten as a stable SQL function to help the query planner.
+-- FIX: Cast the role column to text to handle schema inconsistencies where the column might be `text` instead of `user_role`.
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS(SELECT 1 FROM public.users WHERE id = auth.uid() AND role::text = 'admin');
+$$;
+
+-- USERS Table
+CREATE TABLE IF NOT EXISTS public.users (
+  id uuid NOT NULL PRIMARY KEY,
+  name text,
+  email text,
+  image_url text,
+  role user_role DEFAULT 'business_owner'::user_role NOT NULL,
+  status user_status DEFAULT 'active'::user_status NOT NULL,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  subscription_status text DEFAULT 'trialing'::text NOT NULL,
+  trial_starts_at timestamptz DEFAULT now() NOT NULL,
+  trial_ends_at timestamptz,
+  CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE
+);
+-- Add columns idempotently to support users with older schemas
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS status user_status DEFAULT 'active'::user_status NOT NULL;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS subscription_status text DEFAULT 'trialing'::text NOT NULL;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS trial_starts_at timestamptz DEFAULT now() NOT NULL;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS trial_ends_at timestamptz;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS paypal_subscription_id TEXT;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS subscription_plan TEXT;
+
+
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow users to read their own profile" ON public.users;
+CREATE POLICY "Allow users to read their own profile" ON public.users FOR SELECT USING (auth.uid() = id);
+DROP POLICY IF EXISTS "Allow users to update their own profile" ON public.users;
+CREATE POLICY "Allow users to update their own profile" ON public.users FOR UPDATE USING (auth.uid() = id);
+DROP POLICY IF EXISTS "Admins have full access to user profiles" ON public.users;
+CREATE POLICY "Admins have full access to user profiles" ON public.users FOR ALL USING (public.is_admin());
+
+-- BUSINESSES Table
+CREATE TABLE IF NOT EXISTS public.businesses (
+  id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+  user_id uuid NOT NULL UNIQUE,
+  name text NOT NULL,
+  description text,
+  image_url text,
+  gallery_images text[],
+  calendar_settings jsonb,
+  created_at timestamptz DEFAULT now() NOT NULL
+);
+
+-- Add columns idempotently
+ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS theme_settings jsonb;
+ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS html_content TEXT;
+ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS css_content TEXT;
+ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS slug text UNIQUE;
+ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'USD' NOT NULL;
+ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS socials jsonb;
+ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS google_access_token TEXT;
+ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS google_refresh_token TEXT;
+ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS google_integration_active BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.businesses DROP COLUMN IF EXISTS whatsapp_access_token;
+ALTER TABLE public.businesses DROP COLUMN IF EXISTS whatsapp_phone_number_id;
+ALTER TABLE public.businesses DROP COLUMN IF EXISTS whatsapp_integration_active;
+ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS whatsapp_notifications_enabled BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.businesses DROP COLUMN IF EXISTS email_templates;
+ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS enabled_email_languages TEXT[] DEFAULT ARRAY['en']::TEXT[];
+ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS custom_domain TEXT UNIQUE;
+ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS custom_domain_status TEXT DEFAULT 'pending'::text;
+ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS default_language TEXT;
+-- Remove location-specific columns
+ALTER TABLE public.businesses DROP COLUMN IF EXISTS address;
+ALTER TABLE public.businesses DROP COLUMN IF EXISTS working_hours;
+ALTER TABLE public.businesses DROP COLUMN IF EXISTS closed_days;
+ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS email_messages_sent INT DEFAULT 0 NOT NULL;
+ALTER TABLE public.businesses ADD COLUMN IF NOT EXISTS whatsapp_messages_sent INT DEFAULT 0 NOT NULL;
+-- Remove obsolete columns for WhatsApp templates
+ALTER TABLE public.businesses DROP COLUMN IF EXISTS whatsapp_template_confirmation_en;
+ALTER TABLE public.businesses DROP COLUMN IF EXISTS whatsapp_template_confirmation_ar;
+ALTER TABLE public.businesses DROP COLUMN IF EXISTS whatsapp_template_confirmation_fr;
+ALTER TABLE public.businesses DROP COLUMN IF EXISTS whatsapp_template_reminder_en;
+ALTER TABLE public.businesses DROP COLUMN IF EXISTS whatsapp_template_reminder_ar;
+ALTER TABLE public.businesses DROP COLUMN IF EXISTS whatsapp_template_reminder_fr;
+
+
+CREATE INDEX IF NOT EXISTS businesses_slug_idx ON public.businesses(slug);
+-- This explicit foreign key relationship with a name allows for easier joins from businesses to users.
+DO $$
+BEGIN
+   IF NOT EXISTS (
+       SELECT 1
+       FROM   information_schema.table_constraints
+       WHERE  constraint_name = 'businesses_user_id_fkey_relation' AND
+              table_name = 'businesses'
+   )
+   THEN
+      ALTER TABLE public.businesses 
+      ADD CONSTRAINT businesses_user_id_fkey_relation
+      FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+   END IF;
+END;
+$$;
+
+
+ALTER TABLE public.businesses ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow business owners to manage their own business" ON public.businesses;
+CREATE POLICY "Allow business owners to manage their own business" ON public.businesses FOR ALL USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Allow public read-only access to businesses by slug" ON public.businesses;
+CREATE POLICY "Allow public read-only access to businesses by slug" ON public.businesses FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Admins have full access to businesses" ON public.businesses;
+CREATE POLICY "Admins have full access to businesses" ON public.businesses FOR ALL USING (public.is_admin());
+
+-- LOCATIONS Table
+CREATE TABLE IF NOT EXISTS public.locations (
+  id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+  business_id uuid NOT NULL,
+  name text NOT NULL,
+  address text,
+  working_hours jsonb,
+  closed_days day_of_week[],
+  created_at timestamptz DEFAULT now() NOT NULL,
+  CONSTRAINT locations_business_id_fkey FOREIGN KEY (business_id) REFERENCES public.businesses(id) ON DELETE CASCADE
+);
+ALTER TABLE public.locations ADD COLUMN IF NOT EXISTS slug text;
+DO $$
+BEGIN
+   IF NOT EXISTS (
+       SELECT 1
+       FROM   information_schema.table_constraints
+       WHERE  constraint_name = 'locations_business_id_slug_key' AND
+              table_name = 'locations'
+   )
+   THEN
+      ALTER TABLE public.locations ADD CONSTRAINT locations_business_id_slug_key UNIQUE (business_id, slug);
+   END IF;
+END;
+$$;
+
+ALTER TABLE public.locations ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow business owners to manage their locations" ON public.locations;
+CREATE POLICY "Allow business owners to manage their locations" ON public.locations FOR ALL USING (
+  business_id IN (SELECT id FROM public.businesses WHERE user_id = auth.uid())
+);
+DROP POLICY IF EXISTS "Allow public read-only access to locations" ON public.locations;
+CREATE POLICY "Allow public read-only access to locations" ON public.locations FOR SELECT USING (true);
+
+
+-- SERVICE_CATEGORIES Table
+CREATE TABLE IF NOT EXISTS public.service_categories (
+  id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+  business_id uuid NOT NULL,
+  name text NOT NULL,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  CONSTRAINT service_categories_business_id_fkey FOREIGN KEY (business_id) REFERENCES public.businesses(id) ON DELETE CASCADE,
+  UNIQUE (business_id, name)
+);
+
+ALTER TABLE public.service_categories ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow business owners to manage their service categories" ON public.service_categories;
+CREATE POLICY "Allow business owners to manage their service categories" ON public.service_categories FOR ALL USING (
+  business_id IN (SELECT id FROM public.businesses WHERE user_id = auth.uid())
+);
+DROP POLICY IF EXISTS "Allow public read-only access to service categories" ON public.service_categories;
+CREATE POLICY "Allow public read-only access to service categories" ON public.service_categories FOR SELECT USING (true);
+
+
+-- SERVICES Table
+CREATE TABLE IF NOT EXISTS public.services (
+  id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+  business_id uuid NOT NULL,
+  name text NOT NULL,
+  duration integer NOT NULL,
+  price numeric(10,2) NOT NULL,
+  description text,
+  image_url text,
+  CONSTRAINT services_business_id_fkey FOREIGN KEY (business_id) REFERENCES public.businesses(id) ON DELETE CASCADE
+);
+ALTER TABLE public.services ADD COLUMN IF NOT EXISTS category_id uuid;
+DO $$
+BEGIN
+   IF NOT EXISTS (
+       SELECT 1
+       FROM   information_schema.table_constraints
+       WHERE  constraint_name = 'services_category_id_fkey' AND
+              table_name = 'services'
+   )
+   THEN
+      ALTER TABLE public.services
+      ADD CONSTRAINT services_category_id_fkey
+      FOREIGN KEY (category_id) REFERENCES public.service_categories(id) ON DELETE SET NULL;
+   END IF;
+END;
+$$;
+
+ALTER TABLE public.services ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow business owners to manage their services" ON public.services;
+CREATE POLICY "Allow business owners to manage their services" ON public.services FOR ALL USING (
+  business_id IN (SELECT id FROM public.businesses WHERE user_id = auth.uid())
+);
+DROP POLICY IF EXISTS "Allow public read-only access to services" ON public.services;
+CREATE POLICY "Allow public read-only access to services" ON public.services FOR SELECT USING (true);
+
+-- SERVICE_LOCATIONS Table (Many-to-Many)
+CREATE TABLE IF NOT EXISTS public.service_locations (
+    service_id uuid NOT NULL,
+    location_id uuid NOT NULL,
+    PRIMARY KEY (service_id, location_id),
+    CONSTRAINT service_locations_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id) ON DELETE CASCADE,
+    CONSTRAINT service_locations_location_id_fkey FOREIGN KEY (location_id) REFERENCES public.locations(id) ON DELETE CASCADE
+);
+ALTER TABLE public.service_locations ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow business owners to manage service_locations links" ON public.service_locations;
+CREATE POLICY "Allow business owners to manage service_locations links" ON public.service_locations FOR ALL USING (
+  service_id IN (SELECT id FROM public.services WHERE business_id IN (SELECT id FROM public.businesses WHERE user_id = auth.uid()))
+);
+DROP POLICY IF EXISTS "Allow public read-only access to service_locations" ON public.service_locations;
+CREATE POLICY "Allow public read-only access to service_locations" ON public.service_locations FOR SELECT USING (true);
+
+
+-- STAFF_MEMBERS Table
+CREATE TABLE IF NOT EXISTS public.staff_members (
+  id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+  business_id uuid NOT NULL,
+  name text NOT NULL,
+  email text,
+  image_url text,
+  working_hours jsonb,
+  closed_days day_of_week[],
+  created_at timestamptz DEFAULT now() NOT NULL,
+  CONSTRAINT staff_members_business_id_fkey FOREIGN KEY (business_id) REFERENCES public.businesses(id) ON DELETE CASCADE
+);
+ALTER TABLE public.staff_members ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow business owners to manage their staff" ON public.staff_members;
+CREATE POLICY "Allow business owners to manage their staff" ON public.staff_members FOR ALL USING (
+  business_id IN (SELECT id FROM public.businesses WHERE user_id = auth.uid())
+);
+DROP POLICY IF EXISTS "Allow public read-only access to staff" ON public.staff_members;
+CREATE POLICY "Allow public read-only access to staff" ON public.staff_members FOR SELECT USING (true);
+
+
+-- STAFF_SERVICES Table (Many-to-Many)
+CREATE TABLE IF NOT EXISTS public.staff_services (
+    staff_id uuid NOT NULL,
+    service_id uuid NOT NULL,
+    PRIMARY KEY (staff_id, service_id),
+    CONSTRAINT staff_services_staff_id_fkey FOREIGN KEY (staff_id) REFERENCES public.staff_members(id) ON DELETE CASCADE,
+    CONSTRAINT staff_services_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id) ON DELETE CASCADE
+);
+ALTER TABLE public.staff_services ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow business owners to manage staff_services links" ON public.staff_services;
+CREATE POLICY "Allow business owners to manage staff_services links" ON public.staff_services FOR ALL USING (
+  staff_id IN (SELECT id FROM public.staff_members WHERE business_id IN (SELECT id FROM public.businesses WHERE user_id = auth.uid()))
+);
+DROP POLICY IF EXISTS "Allow public read-only access to staff_services" ON public.staff_services;
+CREATE POLICY "Allow public read-only access to staff_services" ON public.staff_services FOR SELECT USING (true);
+
+-- STAFF_LOCATIONS Table (Many-to-Many)
+CREATE TABLE IF NOT EXISTS public.staff_locations (
+    staff_id uuid NOT NULL,
+    location_id uuid NOT NULL,
+    PRIMARY KEY (staff_id, location_id),
+    CONSTRAINT staff_locations_staff_id_fkey FOREIGN KEY (staff_id) REFERENCES public.staff_members(id) ON DELETE CASCADE,
+    CONSTRAINT staff_locations_location_id_fkey FOREIGN KEY (location_id) REFERENCES public.locations(id) ON DELETE CASCADE
+);
+ALTER TABLE public.staff_locations ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow business owners to manage staff_locations links" ON public.staff_locations;
+CREATE POLICY "Allow business owners to manage staff_locations links" ON public.staff_locations FOR ALL USING (
+  staff_id IN (SELECT id FROM public.staff_members WHERE business_id IN (SELECT id FROM public.businesses WHERE user_id = auth.uid()))
+);
+DROP POLICY IF EXISTS "Allow public read-only access to staff_locations" ON public.staff_locations;
+CREATE POLICY "Allow public read-only access to staff_locations" ON public.staff_locations FOR SELECT USING (true);
+
+
+-- BOOKINGS Table
+CREATE TABLE IF NOT EXISTS public.bookings (
+  id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+  business_id uuid NOT NULL,
+  customer_name text NOT NULL,
+  customer_email text NOT NULL,
+  customer_phone text,
+  service_id uuid,
+  service_name text NOT NULL,
+  price_at_booking numeric(10,2) NOT NULL,
+  date date NOT NULL,
+  time time NOT NULL,
+  status booking_status DEFAULT 'pending'::booking_status NOT NULL,
+  notes text,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  CONSTRAINT bookings_business_id_fkey FOREIGN KEY (business_id) REFERENCES public.businesses(id) ON DELETE CASCADE,
+  CONSTRAINT bookings_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id) ON DELETE SET NULL
+);
+
+
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS confirmation_token UUID DEFAULT gen_random_uuid() UNIQUE;
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS cancellation_token UUID DEFAULT gen_random_uuid() UNIQUE;
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS reminder_sent_at timestamptz;
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS staff_member_id uuid;
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS language TEXT;
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS location_id uuid;
+
+DO $$
+BEGIN
+   IF NOT EXISTS (
+       SELECT 1
+       FROM   information_schema.table_constraints
+       WHERE  constraint_name = 'bookings_staff_member_id_fkey' AND
+              table_name = 'bookings'
+   )
+   THEN
+      ALTER TABLE public.bookings
+      ADD CONSTRAINT bookings_staff_member_id_fkey
+      FOREIGN KEY (staff_member_id) REFERENCES public.staff_members(id) ON DELETE SET NULL;
+   END IF;
+END;
+$$;
+DO $$
+BEGIN
+   IF NOT EXISTS (
+       SELECT 1
+       FROM   information_schema.table_constraints
+       WHERE  constraint_name = 'bookings_location_id_fkey' AND
+              table_name = 'bookings'
+   )
+   THEN
+      ALTER TABLE public.bookings
+      ADD CONSTRAINT bookings_location_id_fkey
+      FOREIGN KEY (location_id) REFERENCES public.locations(id) ON DELETE SET NULL;
+   END IF;
+END;
+$$;
+
+ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow business owners to manage their bookings" ON public.bookings;
+CREATE POLICY "Allow business owners to manage their bookings" ON public.bookings FOR ALL USING (business_id IN (SELECT id FROM public.businesses WHERE user_id = auth.uid()));
+DROP POLICY IF EXISTS "Allow public read access for bookings" ON public.bookings;
+CREATE POLICY "Allow public read access for bookings" ON public.bookings FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow public insert for bookings" ON public.bookings;
+CREATE POLICY "Allow public insert for bookings" ON public.bookings FOR INSERT WITH CHECK (true);
+
+-- PLANS Table
+CREATE TABLE IF NOT EXISTS public.plans (
+  id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+  name text NOT NULL UNIQUE,
+  price numeric(10,2) DEFAULT 0.00 NOT NULL,
+  staff_limit integer DEFAULT 1 NOT NULL,
+  services_limit integer DEFAULT 5 NOT NULL,
+  locations_limit integer DEFAULT 1 NOT NULL,
+  email_quota integer DEFAULT 300 NOT NULL,
+  whatsapp_quota integer DEFAULT 0 NOT NULL,
+  is_active boolean DEFAULT true NOT NULL,
+  created_at timestamptz DEFAULT now() NOT NULL
+);
+ALTER TABLE public.plans ADD COLUMN IF NOT EXISTS paypal_plan_id TEXT;
+
+
+ALTER TABLE public.plans ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow authenticated read-only access to plans" ON public.plans;
+CREATE POLICY "Allow authenticated read-only access to plans" ON public.plans FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Admins have full access to plans" ON public.plans;
+CREATE POLICY "Admins have full access to plans" ON public.plans FOR ALL USING (public.is_admin());
+
+-- One-time migration to ensure correct plan names and user assignments
+-- Step 1: Migrate users from old plan names ('pro', 'business') to new names
+UPDATE public.users SET subscription_plan = 'Standard' WHERE subscription_plan = 'pro';
+UPDATE public.users SET subscription_plan = 'Professional' WHERE subscription_plan = 'business';
+
+-- Step 2: Remove the old 'Pro' and 'Business' plans from the plans table if they exist
+DELETE FROM public.plans WHERE name IN ('Pro', 'Business');
+
+-- Step 3: Insert or update the 'Standard' and 'Professional' plans to ensure they exist with the correct values.
+-- Using ON CONFLICT DO UPDATE makes this idempotent and safe to re-run.
+INSERT INTO public.plans (name, price, staff_limit, services_limit, locations_limit, email_quota, whatsapp_quota, is_active)
+VALUES 
+  ('Standard', 14.00, 3, 10, 1, 300, 300, true),
+  ('Professional', 39.00, 10, 30, 3, 1000, 1000, true)
+ON CONFLICT (name) DO UPDATE SET
+  price = EXCLUDED.price,
+  staff_limit = EXCLUDED.staff_limit,
+  services_limit = EXCLUDED.services_limit,
+  locations_limit = EXCLUDED.locations_limit,
+  email_quota = EXCLUDED.email_quota,
+  whatsapp_quota = EXCLUDED.whatsapp_quota,
+  is_active = EXCLUDED.is_active;
+
+
+-- SHORT_LINKS Table
+CREATE TABLE IF NOT EXISTS public.short_links (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    short_code text UNIQUE NOT NULL,
+    long_url text NOT NULL,
+    user_id uuid NOT NULL,
+    created_at timestamptz DEFAULT now() NOT NULL,
+    CONSTRAINT short_links_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS short_links_short_code_idx ON public.short_links(short_code);
+ALTER TABLE public.short_links ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can manage their own short links" ON public.short_links;
+CREATE POLICY "Users can manage their own short links" ON public.short_links FOR ALL USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Allow public read-access for redirection" ON public.short_links;
+CREATE POLICY "Allow public read-access for redirection" ON public.short_links FOR SELECT USING (true);
+
+-- SUPPORT TICKETS Table
+CREATE TABLE IF NOT EXISTS public.support_tickets (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    user_id uuid NOT NULL,
+    user_email text,
+    user_name text,
+    subject text NOT NULL,
+    status ticket_status DEFAULT 'open'::ticket_status NOT NULL,
+    created_at timestamptz DEFAULT now() NOT NULL,
+    updated_at timestamptz DEFAULT now() NOT NULL,
+    CONSTRAINT support_tickets_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+);
+
+-- TICKET MESSAGES Table
+CREATE TABLE IF NOT EXISTS public.support_ticket_messages (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    ticket_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    user_name text,
+    content text NOT NULL,
+    created_at timestamptz DEFAULT now() NOT NULL,
+    CONSTRAINT support_ticket_messages_ticket_id_fkey FOREIGN KEY (ticket_id) REFERENCES public.support_tickets(id) ON DELETE CASCADE,
+    CONSTRAINT support_ticket_messages_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+);
+ALTER TABLE public.support_tickets ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can manage their own support tickets" ON public.support_tickets;
+CREATE POLICY "Users can manage their own support tickets" ON public.support_tickets FOR ALL USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Admins have full access to support tickets" ON public.support_tickets;
+CREATE POLICY "Admins have full access to support tickets" ON public.support_tickets FOR ALL USING (public.is_admin());
+
+ALTER TABLE public.support_ticket_messages ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can manage replies on their own tickets" ON public.support_ticket_messages;
+CREATE POLICY "Users can manage replies on their own tickets" ON public.support_ticket_messages FOR ALL USING (
+  ticket_id IN (SELECT id FROM public.support_tickets WHERE user_id = auth.uid())
+);
+DROP POLICY IF EXISTS "Admins have full access to ticket replies" ON public.support_ticket_messages;
+CREATE POLICY "Admins have full access to ticket replies" ON public.support_ticket_messages FOR ALL USING (public.is_admin());
+
+-- SYSTEM_SETTINGS Table (Key-Value for global settings)
+CREATE TABLE IF NOT EXISTS public.system_settings (
+  key text NOT NULL PRIMARY KEY,
+  value jsonb
+);
+
+ALTER TABLE public.system_settings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public read-only access to system settings" ON public.system_settings;
+CREATE POLICY "Allow public read-only access to system settings" ON public.system_settings FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Admins have full access to system settings" ON public.system_settings;
+CREATE POLICY "Admins have full access to system settings" ON public.system_settings FOR ALL USING (public.is_admin());
+
+-- PAYMENT_HISTORY Table
+CREATE TABLE IF NOT EXISTS public.payment_history (
+  id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+  user_id uuid NOT NULL,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  amount numeric(10,2) NOT NULL,
+  currency text NOT NULL DEFAULT 'USD',
+  payment_provider text NOT NULL,
+  provider_transaction_id text,
+  description text,
+  CONSTRAINT payment_history_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+);
+
+ALTER TABLE public.payment_history ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow users to read their own payment history" ON public.payment_history;
+CREATE POLICY "Allow users to read their own payment history" ON public.payment_history FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Allow users to insert their own payment records" ON public.payment_history;
+CREATE POLICY "Allow users to insert their own payment records" ON public.payment_history FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Admins have full access to payment history" ON public.payment_history;
+CREATE POLICY "Admins have full access to payment history" ON public.payment_history FOR ALL USING (public.is_admin());
+
+-- RATE LIMITING Table
+CREATE TABLE IF NOT EXISTS public.rate_limits (
+  id bigint GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  identifier text NOT NULL,
+  created_at timestamptz DEFAULT now() NOT NULL
+);
+CREATE INDEX IF NOT EXISTS rate_limits_identifier_created_at_idx ON public.rate_limits(identifier, created_at);
+
+ALTER TABLE public.rate_limits ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow users to manage their own rate limit entries" ON public.rate_limits;
+CREATE POLICY "Allow users to manage their own rate limit entries" ON public.rate_limits FOR ALL USING (auth.uid()::text = identifier);
+DROP POLICY IF EXISTS "Admins have full access to rate limits" ON public.rate_limits;
+CREATE POLICY "Admins have full access to rate limits" ON public.rate_limits FOR ALL USING (public.is_admin());
+
+-- TEMPLATES Table
+CREATE TABLE IF NOT EXISTS public.templates (
+  id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+  name text NOT NULL,
+  description text,
+  image_url text,
+  created_at timestamptz DEFAULT now() NOT NULL
+);
+ALTER TABLE public.templates DROP COLUMN IF EXISTS theme_settings;
+ALTER TABLE public.templates ADD COLUMN IF NOT EXISTS html_content TEXT;
+ALTER TABLE public.templates ADD COLUMN IF NOT EXISTS css_content TEXT;
+-- Add UNIQUE constraint to name column for ON CONFLICT to work
+DO $$
+BEGIN
+   IF NOT EXISTS (
+       SELECT 1 FROM pg_constraint
+       WHERE conname = 'templates_name_key' AND conrelid = 'public.templates'::regclass
+   ) THEN
+      ALTER TABLE public.templates ADD CONSTRAINT templates_name_key UNIQUE (name);
+   END IF;
+END;
+$$;
+ALTER TABLE public.templates ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow authenticated users to read templates" ON public.templates;
+CREATE POLICY "Allow authenticated users to read templates" ON public.templates FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Admins have full access to templates" ON public.templates;
+CREATE POLICY "Admins have full access to templates" ON public.templates FOR ALL USING (public.is_admin());
+
+-- PAGES Table
+CREATE TABLE IF NOT EXISTS public.pages (
+  id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+  slug text UNIQUE NOT NULL,
+  title jsonb,
+  content jsonb,
+  is_published boolean DEFAULT false,
+  show_in_header boolean DEFAULT false,
+  show_in_footer boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE public.pages ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public read access to published pages" ON public.pages;
+CREATE POLICY "Allow public read access to published pages" ON public.pages FOR SELECT USING (is_published = true);
+DROP POLICY IF EXISTS "Admins have full access to pages" ON public.pages;
+CREATE POLICY "Admins have full access to pages" ON public.pages FOR ALL USING (public.is_admin());
+
+-- Remove obsolete plan settings
+DELETE FROM public.system_settings WHERE key IN ('subscription_plans', 'paypal_plans');
+
+-- Insert default settings if they don't exist.
+INSERT INTO public.system_settings (key, value) VALUES ('paypal_product_id', 'null') ON CONFLICT (key) DO NOTHING;
+INSERT INTO public.system_settings (key, value) VALUES ('brevo_api_key', 'null') ON CONFLICT (key) DO NOTHING;
+INSERT INTO public.system_settings (key, value) VALUES ('brevo_sender_name', '"localDify"') ON CONFLICT (key) DO NOTHING;
+INSERT INTO public.system_settings (key, value) VALUES ('brevo_sender_email', 'null') ON CONFLICT (key) DO NOTHING;
+INSERT INTO public.system_settings (key, value) VALUES ('whatsapp_access_token', 'null') ON CONFLICT (key) DO NOTHING;
+INSERT INTO public.system_settings (key, value) VALUES ('whatsapp_phone_number_id', 'null') ON CONFLICT (key) DO NOTHING;
+INSERT INTO public.system_settings (key, value) VALUES ('whatsapp_business_account_id', 'null') ON CONFLICT (key) DO NOTHING;
+INSERT INTO public.system_settings (key, value) VALUES ('registration_counter_enabled', 'false') ON CONFLICT (key) DO NOTHING;
+INSERT INTO public.system_settings (key, value) VALUES ('registration_counter_message', '"🎉 {{current}} out of {{total}} salons have registered!"') ON CONFLICT (key) DO NOTHING;
+INSERT INTO public.system_settings (key, value) VALUES ('registration_counter_current', '37') ON CONFLICT (key) DO NOTHING;
+INSERT INTO public.system_settings (key, value) VALUES ('registration_counter_total', '50') ON CONFLICT (key) DO NOTHING;
+
+-- One-time migration to fix incorrect default 'en' language code for WhatsApp templates.
+-- This preserves any template name the user has already set.
+UPDATE public.system_settings SET value = value || '{"code": "en_US"}'::jsonb WHERE key = 'whatsapp_template_confirmation_en' AND value ->> 'code' = 'en';
+UPDATE public.system_settings SET value = value || '{"code": "en_US"}'::jsonb WHERE key = 'whatsapp_template_reminder_en' AND value ->> 'code' = 'en';
+
+-- Insert keys for global WhatsApp templates with corrected defaults.
+INSERT INTO public.system_settings (key, value) VALUES ('whatsapp_template_confirmation_en', '{"name": "", "code": "en_US"}') ON CONFLICT (key) DO NOTHING;
+INSERT INTO public.system_settings (key, value) VALUES ('whatsapp_template_confirmation_ar', '{"name": "", "code": "ar"}') ON CONFLICT (key) DO NOTHING;
+INSERT INTO public.system_settings (key, value) VALUES ('whatsapp_template_confirmation_fr', '{"name": "", "code": "fr"}') ON CONFLICT (key) DO NOTHING;
+INSERT INTO public.system_settings (key, value) VALUES ('whatsapp_template_reminder_en', '{"name": "", "code": "en_US"}') ON CONFLICT (key) DO NOTHING;
+INSERT INTO public.system_settings (key, value) VALUES ('whatsapp_template_reminder_ar', '{"name": "", "code": "ar"}') ON CONFLICT (key) DO NOTHING;
+INSERT INTO public.system_settings (key, value) VALUES ('whatsapp_template_reminder_fr', '{"name": "", "code": "fr"}') ON CONFLICT (key) DO NOTHING;
+
+
+-- Insert the classic template into the new table so it's not lost
+INSERT INTO public.templates (name, description, image_url, html_content, css_content)
+VALUES (
+  'Classic Template',
+  'A timeless and professional look suitable for any local business, from barbershops to clinics.',
+  'https://i.imgur.com/UnmC5bU.jpeg',
+  '<div class="py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-3xl mx-auto">
+    <div class="bg-card text-card-foreground shadow-lg rounded-lg border border-border">
+      <div class="border-b border-border text-center p-6">
+        <img src="{{business_image_url}}" alt="{{business_name}}" class="w-32 h-32 object-cover mb-4 rounded-full mx-auto"/>
+        <h1 class="text-3xl font-bold">{{business_name}}</h1>
+        <p class="mt-2 text-muted-foreground">{{business_description}}</p>
+      </div>
+      <div class="p-6">
+        {{booking_app}}
+      </div>
+    </div>
+  </div>
+</div>',
+  ':root {
+  --primary: #644a40;
+  --background: #f9f9f9;
+  --card: #fcfcfc;
+  --foreground: #202020;
+  --muted-foreground: #6B7280;
+  --border: #E5E7EB;
+  --radius: 8px;
+}
+body {
+  font-family: "Lora", serif;
+}'
+) ON CONFLICT (name) DO NOTHING;
+
+-- Function to create a public user profile upon new auth user creation.
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  INSERT INTO public.users (id, name, email, trial_ends_at, subscription_plan)
+  VALUES (new.id, new.raw_user_meta_data->>'name', new.email, now() + interval '14 days', 'Standard');
+  RETURN new;
+END;
+$$;
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+-- Function to generate a unique short code for the URL shortener.
+CREATE OR REPLACE FUNCTION public.generate_short_code(length int)
+RETURNS TEXT
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    chars TEXT[] := '{0,1,2,3,4,5,6,7,8,9,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,A,B,C,D,E,F,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z}';
+    result TEXT := '';
+    i INT;
+BEGIN
+    FOR i IN 1..length LOOP
+        result := result || chars[1+floor(random()*(array_length(chars, 1)-1))];
+    END LOOP;
+    RETURN result;
+END;
+$$;
+
+-- Function for atomic rate limit check
+CREATE OR REPLACE FUNCTION public.rate_limit_check(p_identifier text, p_limit integer, p_window_start timestamptz)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  current_count integer;
+BEGIN
+  -- This function is SECURITY DEFINER, so it can operate on the rate_limits table
+  -- regardless of who calls it. RLS policies will be bypassed inside this function.
+
+  -- Delete old entries outside the window for the current identifier
+  DELETE FROM public.rate_limits
+  WHERE identifier = p_identifier AND created_at < p_window_start;
+
+  -- Count recent requests
+  SELECT count(*) INTO current_count
+  FROM public.rate_limits
+  WHERE identifier = p_identifier;
+
+  -- Check if limit is exceeded
+  IF current_count >= p_limit THEN
+    RAISE EXCEPTION 'RATE_LIMIT_EXCEEDED';
+  END IF;
+
+  -- Log the new request
+  INSERT INTO public.rate_limits (identifier)
+  VALUES (p_identifier);
+END;
+$$;
+
+
+-- Function for admin dashboard stats
+CREATE OR REPLACE FUNCTION public.get_admin_stats()
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  total_users bigint;
+  total_businesses bigint;
+  total_bookings bigint;
+BEGIN
+  SELECT count(*) INTO total_users FROM public.users;
+  SELECT count(*) INTO total_businesses FROM public.businesses;
+  SELECT count(*) INTO total_bookings FROM public.bookings;
+  RETURN json_build_object(
+    'totalUsers', total_users,
+    'totalBusinesses', total_businesses,
+    'totalBookings', total_bookings
+  );
+END;
+$$;
+
+-- Function for admin dashboard user list
+DROP FUNCTION IF EXISTS public.get_all_users_with_business();
+CREATE OR REPLACE FUNCTION public.get_all_users_with_business()
+RETURNS TABLE (
+  id uuid,
+  name text,
+  email text,
+  role user_role,
+  status user_status,
+  created_at timestamptz,
+  business_name text,
+  subscription_status text,
+  trial_ends_at timestamptz,
+  paypal_subscription_id text,
+  subscription_plan text,
+  whatsapp_number text,
+  total_bookings bigint,
+  email_messages_sent int,
+  whatsapp_messages_sent int
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    u.id,
+    u.name,
+    u.email,
+    u.role::user_role,
+    u.status::user_status,
+    u.created_at,
+    b.name AS business_name,
+    u.subscription_status,
+    u.trial_ends_at,
+    u.paypal_subscription_id,
+    u.subscription_plan,
+    b.socials ->> 'whatsapp' AS whatsapp_number,
+    (SELECT count(*) FROM public.bookings WHERE business_id = b.id) AS total_bookings,
+    b.email_messages_sent,
+    b.whatsapp_messages_sent
+  FROM public.users u
+  LEFT JOIN public.businesses b ON u.id = b.user_id
+  ORDER BY u.created_at DESC;
+END;
+$$;
+
+-- Function for admin support ticket list view
+CREATE OR REPLACE FUNCTION public.get_admin_tickets_with_business()
+RETURNS TABLE (
+  id uuid,
+  user_id uuid,
+  user_email text,
+  user_name text,
+  subject text,
+  status ticket_status,
+  created_at timestamptz,
+  updated_at timestamptz,
+  business_name text
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Permission denied: Not an admin.';
+  END IF;
+
+  RETURN QUERY
+  SELECT
+    st.id,
+    st.user_id,
+    st.user_email,
+    st.user_name,
+    st.subject,
+    st.status,
+    st.created_at,
+    st.updated_at,
+    b.name AS business_name
+  FROM public.support_tickets st
+  LEFT JOIN public.businesses b ON st.user_id = b.user_id
+  ORDER BY st.updated_at DESC;
+END;
+$$;
+
+-- Function for admin support ticket detail view
+CREATE OR REPLACE FUNCTION public.get_admin_ticket_detail_by_id(p_ticket_id uuid)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    ticket_details json;
+BEGIN
+    IF NOT public.is_admin() THEN
+        RAISE EXCEPTION 'Permission denied: Not an admin.';
+    END IF;
+
+    SELECT json_build_object(
+        'id', st.id,
+        'userId', st.user_id,
+        'userEmail', st.user_email,
+        'userName', st.user_name,
+        'subject', st.subject,
+        'status', st.status,
+        'createdAt', st.created_at,
+        'updatedAt', st.updated_at,
+        'businessName', b.name,
+        'messages', COALESCE((
+            SELECT json_agg(
+                json_build_object(
+                    'id', stm.id,
+                    'ticketId', stm.ticket_id,
+                    'userId', stm.user_id,
+                    'userName', stm.user_name,
+                    'content', stm.content,
+                    'createdAt', stm.created_at
+                ) ORDER BY stm.created_at ASC
+            )
+            FROM public.support_ticket_messages stm
+            WHERE stm.ticket_id = st.id
+        ), '[]'::json)
+    )
+    INTO ticket_details
+    FROM public.support_tickets st
+    LEFT JOIN public.businesses b ON st.user_id = b.user_id
+    WHERE st.id = p_ticket_id;
+
+    RETURN ticket_details;
+END;
+$$;
+
+-- Function to get a business profile for the currently authenticated user.
+-- This bypasses potential CORS issues with the PostgREST endpoint by using RPC.
+CREATE OR REPLACE FUNCTION public.get_business_for_authed_user()
+RETURNS json
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    business_data json;
+BEGIN
+    -- This function is SECURITY DEFINER, so it can run with elevated privileges,
+    -- but it's restricted to fetching data for the currently authenticated user via auth.uid().
+    SELECT json_build_object(
+        'id', b.id,
+        'userId', b.user_id,
+        'name', b.name,
+        'slug', b.slug,
+        'description', b.description,
+        'imageUrl', b.image_url,
+        'galleryImages', b.gallery_images,
+        'currency', b.currency,
+        'calendarSettings', b.calendar_settings,
+        'htmlContent', b.html_content,
+        'cssContent', b.css_content,
+        'enabledEmailLanguages', b.enabled_email_languages,
+        'google_access_token', b.google_access_token,
+        'google_refresh_token', b.google_refresh_token,
+        'google_integration_active', b.google_integration_active,
+        'whatsappNotificationsEnabled', b.whatsapp_notifications_enabled,
+        'socials', b.socials,
+        'themeSettings', b.theme_settings,
+        'customDomain', b.custom_domain,
+        'customDomainStatus', b.custom_domain_status,
+        'defaultLanguage', b.default_language,
+        'email_messages_sent', b.email_messages_sent,
+        'whatsapp_messages_sent', b.whatsapp_messages_sent
+    )
+    INTO business_data
+    FROM public.businesses b
+    WHERE b.user_id = auth.uid()
+    LIMIT 1;
+
+    RETURN business_data;
+END;
+$$;
+
+
+-- NEW RPC Function for Public Booking Page
+CREATE OR REPLACE FUNCTION public.get_public_location_data(p_business_slug TEXT, p_location_slug TEXT)
+RETURNS json
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    result json;
+BEGIN
+    SELECT
+        json_build_object(
+            'business', jsonb_strip_nulls(jsonb_build_object(
+                'id', b.id,
+                'user_id', b.user_id,
+                'name', b.name,
+                'slug', b.slug,
+                'description', b.description,
+                'image_url', b.image_url,
+                'gallery_images', b.gallery_images,
+                'currency', b.currency,
+                'calendar_settings', b.calendar_settings,
+                'html_content', b.html_content,
+                'css_content', b.css_content,
+                'theme_settings', b.theme_settings,
+                'enabled_email_languages', b.enabled_email_languages,
+                'default_language', b.default_language,
+                'socials', b.socials
+            )),
+            'location', jsonb_strip_nulls(jsonb_build_object(
+                'id', l.id,
+                'business_id', l.business_id,
+                'name', l.name,
+                'slug', l.slug,
+                'address', l.address,
+                'working_hours', l.working_hours,
+                'closed_days', l.closed_days
+            )),
+            'services', (
+                SELECT COALESCE(json_agg(jsonb_strip_nulls(jsonb_build_object(
+                    'id', s.id,
+                    'business_id', s.business_id,
+                    'name', s.name,
+                    'duration', s.duration,
+                    'price', s.price,
+                    'description', s.description,
+                    'image_url', s.image_url,
+                    'category_id', s.category_id,
+                    'location_ids', (SELECT json_agg(sl_sub.location_id) FROM service_locations sl_sub WHERE sl_sub.service_id = s.id)
+                ))), '[]'::json)
+                FROM services s
+                JOIN service_locations sl ON s.id = sl.service_id
+                WHERE s.business_id = b.id AND sl.location_id = l.id
+            ),
+            'staff', (
+                 SELECT COALESCE(json_agg(jsonb_strip_nulls(jsonb_build_object(
+                    'id', sm.id,
+                    'business_id', sm.business_id,
+                    'name', sm.name,
+                    'email', sm.email,
+                    'image_url', sm.image_url,
+                    'working_hours', sm.working_hours,
+                    'closed_days', sm.closed_days,
+                    'service_ids', (SELECT json_agg(ss_sub.service_id) FROM staff_services ss_sub WHERE ss_sub.staff_id = sm.id),
+                    'location_ids', (SELECT json_agg(sl_sub.location_id) FROM staff_locations sl_sub WHERE sl_sub.staff_id = sm.id)
+                 ))), '[]'::json)
+                FROM staff_members sm
+                JOIN staff_locations sl ON sm.id = sl.staff_id
+                WHERE sm.business_id = b.id AND sl.location_id = l.id
+            ),
+            'categories', (
+                SELECT COALESCE(json_agg(sc), '[]'::json)
+                FROM service_categories sc
+                WHERE sc.business_id = b.id
+            )
+        )
+    INTO result
+    FROM businesses b
+    JOIN locations l ON b.id = l.business_id
+    WHERE b.slug = p_business_slug AND l.slug = p_location_slug;
+
+    RETURN result;
+END;
+$$;
+
+-- Function to atomically increment a counter on the businesses table
+CREATE OR REPLACE FUNCTION public.increment_business_counter(p_business_id uuid, p_counter_column text, p_increment_by int)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  EXECUTE format('UPDATE public.businesses SET %I = %I + %s WHERE id = %L',
+                 p_counter_column, p_counter_column, p_increment_by, p_business_id);
+END;
+$$;
+
+-- Function to get public system settings for the frontend
+CREATE OR REPLACE FUNCTION public.get_public_system_settings()
+RETURNS json
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  WITH settings AS (
+    SELECT key, value FROM public.system_settings WHERE key IN (
+      'registration_counter_enabled',
+      'registration_counter_message',
+      'registration_counter_current',
+      'registration_counter_total',
+      'dashboard_video_url'
+    )
+  )
+  SELECT json_build_object(
+    'registrationCounter', json_build_object(
+      'enabled', (SELECT value FROM settings WHERE key = 'registration_counter_enabled'),
+      'message', (SELECT value FROM settings WHERE key = 'registration_counter_message'),
+      'current', (SELECT value FROM settings WHERE key = 'registration_counter_current'),
+      'total', (SELECT value FROM settings WHERE key = 'registration_counter_total')
+    ),
+    'dashboardVideoUrl', (SELECT value FROM settings WHERE key = 'dashboard_video_url')
+  );
+$$;
+
+-- Grant permissions for functions
+GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_admin_stats() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_all_users_with_business() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.generate_short_code(integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_admin_tickets_with_business() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_admin_ticket_detail_by_id(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_business_for_authed_user() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rate_limit_check(text, integer, timestamptz) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_public_location_data(TEXT, TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.increment_business_counter(uuid, text, int) TO service_role;
+GRANT EXECUTE ON FUNCTION public.get_public_system_settings() TO anon, authenticated;
+
+
+-- Enable Realtime on bookings and support tables
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'bookings') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.bookings;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'support_tickets') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.support_tickets;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'support_ticket_messages') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.support_ticket_messages;
+  END IF;
+END $$;
+
+-- STORAGE POLICIES
+DROP POLICY IF EXISTS "Allow authenticated users to manage their own avatar" ON storage.objects;
+CREATE POLICY "Allow authenticated users to manage their own avatar"
+ON storage.objects FOR ALL
+TO authenticated
+USING ( bucket_id = 'avatars' AND name = auth.uid()::text )
+WITH CHECK ( bucket_id = 'avatars' AND name = auth.uid()::text );
+
+DROP POLICY IF EXISTS "Allow users to manage their own business images" ON storage.objects;
+CREATE POLICY "Allow users to manage their own business images"
+ON storage.objects FOR ALL
+TO authenticated
+USING ( bucket_id = 'business-images' AND (storage.foldername(name))[1] = auth.uid()::text )
+WITH CHECK ( bucket_id = 'business-images' AND (storage.foldername(name))[1] = auth.uid()::text );
+
+DROP POLICY IF EXISTS "Allow users to manage their own service images" ON storage.objects;
+CREATE POLICY "Allow users to manage their own service images"
+ON storage.objects FOR ALL
+TO authenticated
+USING ( bucket_id = 'service-images' AND (storage.foldername(name))[1] = auth.uid()::text )
+WITH CHECK ( bucket_id = 'service-images' AND (storage.foldername(name))[1] = auth.uid()::text );
+
+-- Policy for WhatsApp session storage
+DROP POLICY IF EXISTS "Allow service_role full access to whatsapp-sessions" ON storage.objects;
+CREATE POLICY "Allow service_role full access to whatsapp-sessions"
+ON storage.objects FOR ALL
+TO service_role
+USING ( bucket_id = 'whatsapp-sessions' );
+
+-- First, unschedule any existing jobs for this function to prevent duplicates
+SELECT cron.unschedule(jobname)
+FROM cron.job
+WHERE command LIKE '%/functions/v1/brevo-send-reminders%';
+
+-- Schedule the cron job to run daily at 9 AM UTC
+SELECT cron.schedule(
+  'daily-email-reminders', -- A unique name for the job
+  '0 9 * * *',             -- Cron expression for 9 AM UTC every day
+  $$
+  SELECT
+    net.http_post(
+      url:='https://wxsntbclqxfgoccsnawk.supabase.co/functions/v1/brevo-send-reminders',
+      headers:='{"Content-Type": "application/json", "Authorization": "Bearer @supa-secrets.CRON_SECRET"}'::jsonb,
+      body:='{}'::jsonb
+    )
+  AS request_id;
+  $$
+);
+
+-- Cron job to clean up the rate_limits table every hour.
+SELECT cron.schedule(
+  'hourly-rate-limit-cleanup',
+  '0 * * * *',
+  'DELETE FROM public.rate_limits WHERE created_at < now() - interval ''1 hour'''
+);

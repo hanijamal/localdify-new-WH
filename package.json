@@ -1,0 +1,12 @@
+{
+  "name": "localdify-frontend",
+  "version": "1.0.0",
+  "description": "Frontend for the localDify SaaS platform",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.81.1",
+    "qrcode": "^1.5.4",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.9.6"
+  }
+}
