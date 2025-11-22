@@ -47,11 +47,13 @@ const WhatsappConnector: React.FC<WhatsappConnectorProps> = ({ salonId }) => {
     };
 
 
-    const getStatus = useCallback(async () => {
+    const getStatus = useCallback(async (silent = false) => {
         if (BACKEND_URL.includes('YOUR_BACKEND_URL_HERE')) {
-            setStatus('error');
-            setErrorMessage('Backend URL is not configured. Please update the WhatsappConnector.tsx file.');
-            setCheckingStatus(false);
+            if (!silent) {
+                setStatus('error');
+                setErrorMessage('Backend URL is not configured. Please update the WhatsappConnector.tsx file.');
+                setCheckingStatus(false);
+            }
             return 'error';
         }
 
@@ -70,18 +72,25 @@ const WhatsappConnector: React.FC<WhatsappConnectorProps> = ({ salonId }) => {
                 throw new Error(errorMsg);
             }
             const data = await response.json();
-            setStatus(data.status);
-            setCheckingStatus(false);
+
+            // Only update UI if not silent
+            if (!silent) {
+                setStatus(data.status);
+                setCheckingStatus(false);
+            }
+
             return data.status;
         } catch (err: any) {
             console.error('Status fetch error:', err);
             // On error, assume disconnected instead of showing error
-            if (err.name === 'AbortError') {
-                setStatus('disconnected');
-            } else {
-                setStatus('disconnected'); // Optimistic: assume disconnected on error
+            if (!silent) {
+                if (err.name === 'AbortError') {
+                    setStatus('disconnected');
+                } else {
+                    setStatus('disconnected'); // Optimistic: assume disconnected on error
+                }
+                setCheckingStatus(false);
             }
-            setCheckingStatus(false);
             return 'disconnected';
         }
     }, [salonId]); // Removed 'status' dependency to prevent infinite loops
@@ -154,7 +163,7 @@ const WhatsappConnector: React.FC<WhatsappConnectorProps> = ({ salonId }) => {
 
     useEffect(() => {
         // Run status check silently in background without showing loading UI
-        getStatus();
+        getStatus(true); // silent = true
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [salonId]);
 
@@ -209,7 +218,7 @@ const WhatsappConnector: React.FC<WhatsappConnectorProps> = ({ salonId }) => {
 
         // Check actual status in background (no blocking)
         setTimeout(() => {
-            getStatus();
+            getStatus(true); // silent = true
         }, 100);
     };
 
