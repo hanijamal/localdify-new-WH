@@ -176,15 +176,27 @@ export async function ensureSession(salonId, force = false) {
     if (connection === 'close') {
       clearInterval(keepAliveInterval); // Stop pinging
       const code = (lastDisconnect?.error)?.output?.statusCode || (lastDisconnect?.error)?.statusCode;
+      const errorMessage = lastDisconnect?.error?.message || 'Unknown error';
       const session = sessions.get(salonId);
       if (session) session.connected = false;
 
-      logger.warn({ salonId, reason: code }, 'Connection closed');
+      logger.warn({ salonId, reason: code, errorMessage }, 'Connection closed');
 
-      const isUnrecoverable = code === DisconnectReason.loggedOut || code === DisconnectReason.connectionFailure;
+      // Only loggedOut is truly unrecoverable - user explicitly logged out
+      const isUnrecoverable = code === DisconnectReason.loggedOut;
+
+      // Connection failures can be due to corrupted state or network issues
+      // Clear the session to allow fresh reconnection, but don't mark as unrecoverable
+      const isConnectionFailure = code === DisconnectReason.connectionFailure;
 
       if (isUnrecoverable) {
-        logger.warn({ salonId, reason: code }, 'Unrecoverable error detected. Deleting session data permanently.');
+        logger.warn({ salonId, reason: code }, 'User logged out. Deleting session data permanently.');
+        await deleteSessionFromSupabase(salonId);
+        await supabaseAdmin.from('whatsapp_sessions').delete().eq('salon_id', salonId);
+        sessions.delete(salonId);
+      } else if (isConnectionFailure) {
+        logger.warn({ salonId }, 'Connection failure detected. Clearing potentially corrupted session to allow fresh reconnect.');
+        // Clear session from memory and storage to force fresh connection on next attempt
         await deleteSessionFromSupabase(salonId);
         await supabaseAdmin.from('whatsapp_sessions').delete().eq('salon_id', salonId);
         sessions.delete(salonId);
