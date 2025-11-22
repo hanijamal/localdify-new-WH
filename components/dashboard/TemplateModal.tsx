@@ -137,7 +137,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({ isOpen, onClose, salonId,
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} widthClass="max-w-7xl">
+        <Modal isOpen={isOpen} onClose={onClose} widthClass="max-w-7xl" scrollable={true}>
             <div className="p-6">
                 <h2 className="text-2xl font-bold mb-6">Customize Template</h2>
 
