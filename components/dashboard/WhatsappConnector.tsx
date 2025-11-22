@@ -255,7 +255,18 @@ const WhatsappConnector: React.FC<WhatsappConnectorProps> = ({ salonId }) => {
             }
         } catch (err: any) {
             console.error('Pairing error:', err);
-            setPairingError(err.message);
+
+            // Parse error message for user-friendly display
+            let userMessage = err.message;
+            if (userMessage.includes('already connected')) {
+                userMessage = 'Your WhatsApp is already connected. Disconnect first to pair a different account.';
+            } else if (userMessage.includes('Timeout')) {
+                userMessage = 'Connection timeout. Please check your internet connection and try again.';
+            } else if (userMessage.includes('Pairing failed')) {
+                userMessage = 'Could not generate pairing code. Please try again in a moment.';
+            }
+
+            setPairingError(userMessage);
         } finally {
             setIsPairing(false);
         }
