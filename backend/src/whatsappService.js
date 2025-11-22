@@ -134,6 +134,9 @@ export async function ensureSession(salonId, force = false) {
     syncFullHistory: false,
     shouldIgnoreJid: (jid) => isJidBroadcast(jid),
     keepAliveIntervalMs: 30000, // Ping every 30s
+    mobile: false, // Explicitly disable mobile mode to ensure QR generation
+    generateHighQualityLinkPreview: false,
+    markOnlineOnConnect: false,
   };
 
   const sock = makeWASocket.default ? makeWASocket.default(socketConfig) : makeWASocket(socketConfig);
