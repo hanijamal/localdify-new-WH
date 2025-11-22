@@ -152,13 +152,17 @@ export async function ensureSession(salonId, force = false) {
   sock.ev.on('connection.update', async (update) => {
     const { connection, lastDisconnect, qr } = update;
 
+    logger.info({ salonId, connection, hasQr: !!qr, hasDisconnect: !!lastDisconnect }, 'Connection update received');
+
     if (qr) {
       try {
+        logger.info({ salonId, qrLength: qr.length }, 'QR code received from WhatsApp');
         const session = sessions.get(salonId);
         if (session) session.lastQr = qr; // Store raw QR string
         await supabaseAdmin.from('whatsapp_sessions').upsert({
           salon_id: salonId, status: 'pending', qr_data_url: qr, updated_at: new Date().toISOString()
         }, { onConflict: 'salon_id' });
+        logger.info({ salonId }, 'QR code stored in database successfully');
       } catch (e) {
         logger.error({ salonId, err: e.message }, 'Failed to process QR');
       }
