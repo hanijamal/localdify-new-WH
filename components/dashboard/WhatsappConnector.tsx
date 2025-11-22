@@ -131,16 +131,23 @@ const WhatsappConnector: React.FC<WhatsappConnectorProps> = ({ salonId }) => {
                 setStatus('loading');
                 // Start polling for QR code
                 const pollInterval = setInterval(async () => {
-                    const { connected, qr } = await getStatus(true);
-                    if (qr) {
-                        clearInterval(pollInterval);
-                        const qrDataUrl = await QRCode.toDataURL(qr, { width: 256, margin: 1 });
-                        setQrCode(qrDataUrl);
-                        setStatus('pending');
-                        setIsQrModalOpen(true);
-                    } else if (connected) {
-                        clearInterval(pollInterval);
-                        setStatus('connected');
+                    try {
+                        const response = await fetch(`${BACKEND_URL}/api/whatsapp/status?salon_id=${salonId}`);
+                        if (response.ok) {
+                            const statusData = await response.json();
+                            if (statusData.qr) {
+                                clearInterval(pollInterval);
+                                const qrDataUrl = await QRCode.toDataURL(statusData.qr, { width: 256, margin: 1 });
+                                setQrCode(qrDataUrl);
+                                setStatus('pending');
+                                setIsQrModalOpen(true);
+                            } else if (statusData.status === 'connected') {
+                                clearInterval(pollInterval);
+                                setStatus('connected');
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Polling error:', error);
                     }
                 }, 2000);
                 // Stop polling after 30 seconds
