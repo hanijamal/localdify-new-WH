@@ -192,6 +192,29 @@ const WhatsappConnector: React.FC<WhatsappConnectorProps> = ({ salonId }) => {
         setIsPhoneModalOpen(true);
     };
 
+    const handleCloseQrModal = () => {
+        // Immediately close modal and reset UI for fast response
+        setIsQrModalOpen(false);
+        setQrCode(null);
+
+        // Clear any pending intervals
+        if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+        }
+
+        // Set to disconnected immediately for instant button visibility
+        // Then verify actual status in background
+        setStatus('disconnected');
+        setCheckingStatus(false);
+
+        // Check actual status in background (no blocking)
+        setTimeout(() => {
+            getStatus();
+        }, 100);
+    };
+
+
     const requestPairing = async () => {
         if (!phoneNumber.trim()) {
             setPairingError('Enter a phone number');
@@ -282,10 +305,10 @@ const WhatsappConnector: React.FC<WhatsappConnectorProps> = ({ salonId }) => {
 
             <Modal
                 isOpen={isQrModalOpen}
-                onClose={() => setIsQrModalOpen(false)}
+                onClose={handleCloseQrModal}
                 title="Link New Session"
                 widthClass="max-w-lg"
-                footer={<Button variant="ghost" onClick={() => setIsQrModalOpen(false)}>Cancel</Button>}
+                footer={<Button variant="ghost" onClick={handleCloseQrModal}>Cancel</Button>}
             >
                 <div className="text-center space-y-3">
                     {qrCode ? (
