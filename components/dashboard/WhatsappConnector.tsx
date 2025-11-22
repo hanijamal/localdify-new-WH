@@ -125,8 +125,33 @@ const WhatsappConnector: React.FC<WhatsappConnectorProps> = ({ salonId }) => {
                 setIsQrModalOpen(true);
             } else if (data.status === 'connected') {
                 setStatus('connected');
+            } else if (data.status === 'loading') {
+                // Backend is still initializing the session
+                // Keep loading state and modal will open when QR is ready
+                setStatus('loading');
+                // Start polling for QR code
+                const pollInterval = setInterval(async () => {
+                    const { connected, qr } = await getStatus(true);
+                    if (qr) {
+                        clearInterval(pollInterval);
+                        const qrDataUrl = await QRCode.toDataURL(qr, { width: 256, margin: 1 });
+                        setQrCode(qrDataUrl);
+                        setStatus('pending');
+                        setIsQrModalOpen(true);
+                    } else if (connected) {
+                        clearInterval(pollInterval);
+                        setStatus('connected');
+                    }
+                }, 2000);
+                // Stop polling after 30 seconds
+                setTimeout(() => clearInterval(pollInterval), 30000);
             } else {
-                await getStatus();
+                // Unexpected status, check current state
+                const currentStatus = await getStatus();
+                if (currentStatus === 'disconnected') {
+                    setStatus('error');
+                    setErrorMessage('Failed to initialize WhatsApp session. Please try again.');
+                }
             }
         } catch (err: any) {
             console.error('Connect error:', err);
