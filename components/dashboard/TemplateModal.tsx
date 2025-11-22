@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import { supabase } from '../../supabaseClient';
@@ -10,42 +10,43 @@ interface TemplateModalProps {
     templateType: 'confirmation' | 'reminder' | 'owner';
 }
 
-const DEFAULT_TEMPLATE = `تأكيد موعدكم
-مرحباً {{customerName}}،
+const DEFAULT_TEMPLATE = `مرحباً {{customerName}}،
 
-تم تأكيد حجزكم في {{businessName}}! تفاصيل الموعد أدناه:
+تم تأكيد حجزكم في {{businessName}}! 
 
 الخدمة: {{serviceName}}
 السعر: {{servicePrice}}
-التاريخ والوقت: {{bookingDate}} الساعة {{bookingTime}}
+التاريخ: {{bookingDate}} 
+الوقت: {{bookingTime}}
 مع: {{staffName}}
+
 الفرع: {{locationName}}
 الموقع: {{locationAddress}}
 
-لأي استفسار، يرجى التواصل معنا عبر واتساب على الرقم: {{businessPhone}}.
+للتواصل: {{businessPhone}}
 
-نتطلع لرؤيتكم قريباً!`;
+نتطلع لرؤيتكم! 💚`;
 
 const PLACEHOLDERS = [
-    { key: '{{customerName}}', label: 'Customer Name', description: "Customer's full name" },
-    { key: '{{customerEmail}}', label: 'Customer Email', description: "Customer's email address" },
-    { key: '{{customerPhone}}', label: 'Customer Phone', description: "Customer's phone number" },
-    { key: '{{serviceName}}', label: 'Service Name', description: 'Name of the booked service' },
-    { key: '{{servicePrice}}', label: 'Service Price', description: 'Price of the service' },
-    { key: '{{bookingDate}}', label: 'Booking Date', description: 'Date of the booking' },
-    { key: '{{bookingTime}}', label: 'Booking Time', description: 'Time of the booking' },
-    { key: '{{staffName}}', label: 'Staff Name', description: 'Name of assigned staff member' },
-    { key: '{{locationName}}', label: 'Location Name', description: 'Name of the location/branch' },
-    { key: '{{locationAddress}}', label: 'Location Address', description: 'Address of the location' },
-    { key: '{{businessName}}', label: 'Business Name', description: 'Name of the business' },
-    { key: '{{businessPhone}}', label: 'Business Phone', description: 'Business phone number' },
+    { key: '{{customerName}}', label: 'Customer Name', example: 'أحمد محمد' },
+    { key: '{{customerEmail}}', label: 'Customer Email', example: 'ahmed@example.com' },
+    { key: '{{customerPhone}}', label: 'Customer Phone', example: '+966501234567' },
+    { key: '{{serviceName}}', label: 'Service Name', example: 'قص شعر' },
+    { key: '{{servicePrice}}', label: 'Service Price', example: '50 ريال' },
+    { key: '{{bookingDate}}', label: 'Booking Date', example: '2024-12-25' },
+    { key: '{{bookingTime}}', label: 'Booking Time', example: '14:00' },
+    { key: '{{staffName}}', label: 'Staff Name', example: 'محمد علي' },
+    { key: '{{locationName}}', label: 'Location Name', example: 'الفرع الرئيسي' },
+    { key: '{{locationAddress}}', label: 'Location Address', example: 'شارع الملك فهد، الرياض' },
+    { key: '{{businessName}}', label: 'Business Name', example: 'صالون النجوم' },
+    { key: '{{businessPhone}}', label: 'Business Phone', example: '+966501234567' },
 ];
 
 const TemplateModal: React.FC<TemplateModalProps> = ({ isOpen, onClose, salonId, templateType }) => {
     const [templateText, setTemplateText] = useState(DEFAULT_TEMPLATE);
     const [isLoading, setIsLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-    const [copiedKey, setCopiedKey] = useState<string | null>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
         if (isOpen && salonId) {
@@ -66,7 +67,6 @@ const TemplateModal: React.FC<TemplateModalProps> = ({ isOpen, onClose, salonId,
             if (error) throw error;
 
             if (data && data[columnName]) {
-                // For now, use 'en' language, can be made dynamic later
                 const template = data[columnName]['en'] || data[columnName]['ar'] || DEFAULT_TEMPLATE;
                 setTemplateText(template);
             } else {
@@ -85,10 +85,9 @@ const TemplateModal: React.FC<TemplateModalProps> = ({ isOpen, onClose, salonId,
         try {
             const columnName = `whatsapp_${templateType}_template`;
 
-            // Save as JSONB with language support
             const templateData = {
                 en: templateText,
-                ar: templateText, // For now, same template for all languages
+                ar: templateText,
             };
 
             const { error } = await supabase
@@ -98,95 +97,132 @@ const TemplateModal: React.FC<TemplateModalProps> = ({ isOpen, onClose, salonId,
 
             if (error) throw error;
 
-            // Show success notification
-            alert('تم حفظ القالب بنجاح');
+            alert('✅ تم حفظ القالب بنجاح');
             onClose();
         } catch (err: any) {
             console.error('Failed to save template:', err);
-            alert('فشل حفظ القالب. حاول مرة أخرى.');
+            alert('❌ فشل حفظ القالب. حاول مرة أخرى.');
         } finally {
             setIsSaving(false);
         }
     };
 
-    const copyPlaceholder = (placeholder: string) => {
-        navigator.clipboard.writeText(placeholder);
-        setCopiedKey(placeholder);
-        setTimeout(() => setCopiedKey(null), 2000);
+    const insertPlaceholder = (placeholder: string) => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = templateText;
+        const before = text.substring(0, start);
+        const after = text.substring(end);
+
+        const newText = before + placeholder + after;
+        setTemplateText(newText);
+
+        // Set cursor position after inserted placeholder
+        setTimeout(() => {
+            textarea.focus();
+            textarea.setSelectionRange(start + placeholder.length, start + placeholder.length);
+        }, 0);
+    };
+
+    // Generate live preview by replacing placeholders with example data
+    const generatePreview = () => {
+        let preview = templateText;
+        PLACEHOLDERS.forEach(({ key, example }) => {
+            preview = preview.replaceAll(key, example);
+        });
+        return preview;
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} maxWidth="6xl">
+        <Modal isOpen={isOpen} onClose={onClose} widthClass="max-w-7xl">
             <div className="p-6">
-                <h2 className="text-2xl font-bold mb-4">Template Preview</h2>
+                <h2 className="text-2xl font-bold mb-6">Customize Template</h2>
 
                 {isLoading ? (
-                    <div className="flex justify-center items-center h-64">
+                    <div className="flex justify-center items-center h-96">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* Template Editor - Left Side */}
-                        <div className="lg:col-span-2">
-                            <label className="block text-sm font-medium mb-2">
-                                Template Text
-                            </label>
-                            <textarea
-                                value={templateText}
-                                onChange={(e) => setTemplateText(e.target.value)}
-                                className="w-full h-96 p-3 border border-border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
-                                placeholder="Enter your template text..."
-                                dir="rtl"
-                            />
-                            <p className="text-xs text-muted-foreground mt-2">
-                                Use placeholders like {'{{customerName}}'} to insert dynamic data
-                            </p>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* LEFT SIDE - Template Editor + Tags */}
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-semibold mb-2">
+                                    Template Text
+                                </label>
+                                <textarea
+                                    ref={textareaRef}
+                                    value={templateText}
+                                    onChange={(e) => setTemplateText(e.target.value)}
+                                    className="w-full h-64 p-4 border-2 border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                                    placeholder="أدخل نص القالب هنا..."
+                                    dir="rtl"
+                                />
+                            </div>
+
+                            {/* Clickable Placeholder Tags */}
+                            <div>
+                                <label className="block text-sm font-semibold mb-3">
+                                    Tags - Click to Insert
+                                </label>
+                                <div className="flex flex-wrap gap-2">
+                                    {PLACEHOLDERS.map((placeholder) => (
+                                        <button
+                                            key={placeholder.key}
+                                            onClick={() => insertPlaceholder(placeholder.key)}
+                                            className="px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 rounded-md text-xs font-medium transition-colors"
+                                            title={placeholder.label}
+                                        >
+                                            {placeholder.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Placeholders List - Right Side */}
-                        <div className="border border-border rounded-md p-4 max-h-96 overflow-y-auto">
-                            <h3 className="font-semibold mb-3 sticky top-0 bg-white pb-2">
-                                Available Placeholders
-                            </h3>
-                            <div className="space-y-2">
-                                {PLACEHOLDERS.map((placeholder) => (
-                                    <div
-                                        key={placeholder.key}
-                                        className="p-2 border border-border rounded hover:bg-gray-50 transition-colors"
-                                    >
-                                        <div className="flex items-start justify-between gap-2">
-                                            <div className="flex-1 min-w-0">
-                                                <p className="font-medium text-sm truncate">{placeholder.label}</p>
-                                                <p className="text-xs text-muted-foreground">{placeholder.description}</p>
-                                                <code className="text-xs bg-gray-100 px-1 py-0.5 rounded mt-1 inline-block">
-                                                    {placeholder.key}
-                                                </code>
+                        {/* RIGHT SIDE - Live WhatsApp Preview */}
+                        <div>
+                            <label className="block text-sm font-semibold mb-3">
+                                Live Preview
+                            </label>
+                            <div className="bg-[#0a1014] rounded-lg p-4 h-[400px] flex flex-col">
+                                {/* WhatsApp-style header */}
+                                <div className="flex items-center gap-3 mb-4 pb-3 border-b border-gray-700">
+                                    <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-white font-bold">
+                                        J
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="text-white font-semibold text-sm">صالون النجوم</div>
+                                        <div className="text-green-400 text-xs">online now</div>
+                                    </div>
+                                </div>
+
+                                {/* Chat message bubble */}
+                                <div className="flex-1 overflow-y-auto">
+                                    <div className="flex justify-end mb-2">
+                                        <div className="bg-[#005c4b] text-white rounded-lg p-3 max-w-[85%] shadow-md">
+                                            <pre className="text-sm whitespace-pre-wrap font-sans" dir="rtl" style={{ fontFamily: 'inherit' }}>
+                                                {generatePreview()}
+                                            </pre>
+                                            <div className="text-xs text-gray-300 mt-2 text-left">
+                                                {new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}
                                             </div>
-                                            <button
-                                                onClick={() => copyPlaceholder(placeholder.key)}
-                                                className="flex-shrink-0 p-1.5 hover:bg-primary hover:text-white rounded transition-colors"
-                                                title="Click to copy"
-                                            >
-                                                {copiedKey === placeholder.key ? (
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                        <polyline points="20 6 9 17 4 12"></polyline>
-                                                    </svg>
-                                                ) : (
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                                                    </svg>
-                                                )}
-                                            </button>
                                         </div>
                                     </div>
-                                ))}
+                                </div>
+
+                                <div className="text-xs text-gray-400 text-center mt-2">
+                                    Preview with example data
+                                </div>
                             </div>
                         </div>
                     </div>
                 )}
 
-                <div className="flex justify-end gap-3 mt-6">
+                <div className="flex justify-end gap-3 mt-6 pt-6 border-t">
                     <Button
                         onClick={onClose}
                         variant="secondary"
@@ -199,7 +235,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({ isOpen, onClose, salonId,
                         variant="primary"
                         isLoading={isSaving}
                     >
-                        Save Template
+                        Save Changes
                     </Button>
                 </div>
             </div>
