@@ -29,7 +29,7 @@ const EmailIcon = () => (
 );
 
 export const Integrations: React.FC = () => {
-    const { business, loading: businessLoading, refetch } = useBusiness();
+    const { business, loading: businessLoading, refetch, setBusiness } = useBusiness();
     const { t } = useLanguage();
 
     // WhatsApp Test State
@@ -119,8 +119,17 @@ export const Integrations: React.FC = () => {
 
             if (error) throw error;
 
-            // Refetch business data to ensure consistency
-            await refetch();
+            // Update business context with optimistic update instead of refetching
+            // This prevents race condition that was resetting toggles
+            const updatedBusiness = {
+                ...business,
+                clientconfirmationenabled: clientConfirmationEnabled,
+                clientreminderenabled: clientReminderEnabled,
+                ownernotificationenabled: ownerNotificationEnabled
+            };
+
+            setBusiness(updatedBusiness);
+
             setHasUnsavedChanges(false);
             setSaveStatus({ type: 'success', text: 'Settings saved successfully!' });
         } catch (err: any) {
