@@ -34,80 +34,25 @@ export async function closeSession(salonId) {
 }
 
 export async function requestPairingCode(salonId, phoneNumber) {
-  logger.info({ salonId, phoneNumber }, 'Requesting pairing code - forcing fresh session');
-
-  // CRITICAL FIX: Force a completely fresh session for pairing
-  // Reusing old sessions causes WhatsApp to reject pairing attempts
-  const session = await ensureSession(salonId, true); // force = true
-
+  const session = await ensureSession(salonId);
   if (!session || !session.sock) {
-    throw new Error('Failed to initialize session for pairing');
+    throw new Error('Failed to initialize session');
   }
 
-  // Ensure we're not already connected
+  // Ensure socket is ready for pairing
   if (session.connected) {
-    throw new Error('Session already connected. Disconnect first to pair a new device.');
+    throw new Error('Session already connected');
   }
 
-  // Wait for socket to be in proper state for pairing
-  // We need to wait for at least one connection.update event
-  logger.info({ salonId }, 'Waiting for socket to be ready for pairing...');
-
-  const waitForSocketReady = new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      reject(new Error('Timeout waiting for socket to initialize'));
-    }, 15000); // 15 second timeout
-
-    // Listen for connection update to know socket is ready
-    const connectionHandler = (update) => {
-      const { connection } = update;
-      logger.debug({ salonId, connection }, 'Connection update during pairing prep');
-
-      // Once we see a connection event, socket is ready
-      if (connection === 'connecting' || connection === 'open') {
-        clearTimeout(timeout);
-        session.sock.ev.off('connection.update', connectionHandler);
-        resolve();
-      } else if (connection === 'close') {
-        clearTimeout(timeout);
-        session.sock.ev.off('connection.update', connectionHandler);
-        reject(new Error('Connection closed unexpectedly during pairing setup'));
-      }
-    };
-
-    session.sock.ev.on('connection.update', connectionHandler);
-
-    // Also add a small initial delay to let socket initialize
-    setTimeout(() => {
-      // If no connection event after 2 seconds, check if socket is at least open
-      if (session.sock && session.sock.ws && !session.sock.ws.isClosed) {
-        clearTimeout(timeout);
-        session.sock.ev.off('connection.update', connectionHandler);
-        resolve();
-      }
-    }, 2000);
-  });
+  // Wait a bit for the socket to be ready if it was just created
+  await delay(3000);
 
   try {
-    await waitForSocketReady;
-    logger.info({ salonId }, 'Socket ready, requesting pairing code from WhatsApp');
-
     const code = await session.sock.requestPairingCode(phoneNumber);
-    logger.info({ salonId, codeLength: code?.length }, 'Pairing code generated successfully');
-
     return code;
   } catch (error) {
     logger.error({ salonId, err: error.message }, 'Failed to request pairing code');
-
-    // Clean up failed session
-    try {
-      session.sock.end(undefined);
-    } catch (e) {
-      // Ignore cleanup errors
-    }
-    sessions.delete(salonId);
-
-    throw new Error(`Pairing failed: ${error.message}`);
+    throw error;
   }
 }
 

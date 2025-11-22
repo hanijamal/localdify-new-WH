@@ -125,40 +125,8 @@ const WhatsappConnector: React.FC<WhatsappConnectorProps> = ({ salonId }) => {
                 setIsQrModalOpen(true);
             } else if (data.status === 'connected') {
                 setStatus('connected');
-            } else if (data.status === 'loading') {
-                // Backend is still initializing the session
-                // Keep loading state and modal will open when QR is ready
-                setStatus('loading');
-                // Start polling for QR code
-                const pollInterval = setInterval(async () => {
-                    try {
-                        const response = await fetch(`${BACKEND_URL}/api/whatsapp/status?salon_id=${salonId}`);
-                        if (response.ok) {
-                            const statusData = await response.json();
-                            if (statusData.qr) {
-                                clearInterval(pollInterval);
-                                const qrDataUrl = await QRCode.toDataURL(statusData.qr, { width: 256, margin: 1 });
-                                setQrCode(qrDataUrl);
-                                setStatus('pending');
-                                setIsQrModalOpen(true);
-                            } else if (statusData.status === 'connected') {
-                                clearInterval(pollInterval);
-                                setStatus('connected');
-                            }
-                        }
-                    } catch (error) {
-                        console.error('Polling error:', error);
-                    }
-                }, 2000);
-                // Stop polling after 30 seconds
-                setTimeout(() => clearInterval(pollInterval), 30000);
             } else {
-                // Unexpected status, check current state
-                const currentStatus = await getStatus();
-                if (currentStatus === 'disconnected') {
-                    setStatus('error');
-                    setErrorMessage('Failed to initialize WhatsApp session. Please try again.');
-                }
+                await getStatus();
             }
         } catch (err: any) {
             console.error('Connect error:', err);
@@ -287,18 +255,7 @@ const WhatsappConnector: React.FC<WhatsappConnectorProps> = ({ salonId }) => {
             }
         } catch (err: any) {
             console.error('Pairing error:', err);
-
-            // Parse error message for user-friendly display
-            let userMessage = err.message;
-            if (userMessage.includes('already connected')) {
-                userMessage = 'Your WhatsApp is already connected. Disconnect first to pair a different account.';
-            } else if (userMessage.includes('Timeout')) {
-                userMessage = 'Connection timeout. Please check your internet connection and try again.';
-            } else if (userMessage.includes('Pairing failed')) {
-                userMessage = 'Could not generate pairing code. Please try again in a moment.';
-            }
-
-            setPairingError(userMessage);
+            setPairingError(err.message);
         } finally {
             setIsPairing(false);
         }
