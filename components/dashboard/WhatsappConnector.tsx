@@ -105,6 +105,10 @@ const WhatsappConnector: React.FC<WhatsappConnectorProps> = ({ salonId }) => {
         setStatus('loading');
         setQrCode(null);
         setErrorMessage(null);
+
+        // Open modal immediately when starting connection
+        setIsQrModalOpen(true);
+
         try {
             const response = await fetch(`${BACKEND_URL}/api/whatsapp/connect`, {
                 method: 'POST',
@@ -118,20 +122,24 @@ const WhatsappConnector: React.FC<WhatsappConnectorProps> = ({ salonId }) => {
             }
 
             const data = await response.json();
+            console.log('Connect response:', data); // Debug log
+
             if (data.qr) {
                 const qrDataUrl = await QRCode.toDataURL(data.qr, { width: 256, margin: 1 });
                 setQrCode(qrDataUrl);
                 setStatus('pending');
-                setIsQrModalOpen(true);
             } else if (data.status === 'connected') {
                 setStatus('connected');
+                setIsQrModalOpen(false);
             } else {
+                // Keep modal open while checking status
                 await getStatus();
             }
         } catch (err: any) {
             console.error('Connect error:', err);
             setStatus('error');
             setErrorMessage(err.message);
+            setIsQrModalOpen(false); // Close modal on error
         }
     };
 
