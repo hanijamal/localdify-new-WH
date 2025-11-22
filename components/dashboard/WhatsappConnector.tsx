@@ -233,10 +233,11 @@ const WhatsappConnector: React.FC<WhatsappConnectorProps> = ({ salonId }) => {
         setPairingError(null);
         setPairingCode(null);
         try {
-            const response = await fetch(`${BACKEND_URL}/api/whatsapp/pair-number`, {
+            // Fixed endpoint to match backend: /pair-with-phone instead of /pair-number
+            const response = await fetch(`${BACKEND_URL}/api/whatsapp/pair-with-phone`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ salonId, salon_id: salonId, phoneNumber }),
+                body: JSON.stringify({ salon_id: salonId, phone_number: phoneNumber }),
             });
 
             if (!response.ok) {
@@ -245,13 +246,40 @@ const WhatsappConnector: React.FC<WhatsappConnectorProps> = ({ salonId }) => {
             }
 
             const data = await response.json();
-            setPairingCode(data.pairingCode || data.pairing_code || null);
+            if (data.success && data.pairingCode) {
+                setPairingCode(data.pairingCode);
+                // Start polling for connection status after code is displayed
+                startPairingPolling();
+            } else {
+                throw new Error('Failed to get pairing code from server');
+            }
         } catch (err: any) {
             console.error('Pairing error:', err);
             setPairingError(err.message);
         } finally {
             setIsPairing(false);
         }
+    };
+
+    const startPairingPolling = () => {
+        // Poll every 3 seconds to check if pairing succeeded
+        const pairingInterval = window.setInterval(async () => {
+            try {
+                const currentStatus = await getStatus(true);
+                if (currentStatus === 'connected') {
+                    clearInterval(pairingInterval);
+                    setIsPhoneModalOpen(false);
+                    setPairingCode(null);
+                    setPhoneNumber('');
+                    setStatus('connected');
+                }
+            } catch (err) {
+                console.error('Error checking pairing status:', err);
+            }
+        }, 3000);
+
+        // Stop polling after 2 minutes
+        setTimeout(() => clearInterval(pairingInterval), 120000);
     };
 
     const renderMainContent = () => {
@@ -356,9 +384,23 @@ const WhatsappConnector: React.FC<WhatsappConnectorProps> = ({ salonId }) => {
                     {pairingError && <p className="text-sm text-destructive">{pairingError}</p>}
                     {isPairing && !pairingCode && <div className="flex items-center gap-2 text-sm text-muted-foreground"><Spinner size="sm" /> <span>Generating code...</span></div>}
                     {pairingCode && (
-                        <div className="p-4 bg-muted rounded-lg text-center space-y-2">
-                            <p className="text-sm text-muted-foreground">Enter this code on your phone:</p>
-                            <p className="text-2xl font-semibold tracking-widest">{pairingCode}</p>
+                        <div className="space-y-3">
+                            <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-center space-y-2">
+                                <p className="text-sm text-muted-foreground">Enter this code on your phone:</p>
+                                <p className="text-2xl font-semibold tracking-widest text-green-700">{pairingCode}</p>
+                                <p className="text-xs text-muted-foreground italic">⏰ Code expires in ~30 seconds</p>
+                            </div>
+                            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                <p className="text-sm font-medium text-blue-900 mb-2">How to link:</p>
+                                <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
+                                    <li>Open WhatsApp on your phone</li>
+                                    <li>Go to Settings → Linked Devices</li>
+                                    <li>Tap "Link a Device"</li>
+                                    <li>Tap "Link with phone number instead"</li>
+                                    <li>Enter the code above</li>
+                                </ol>
+                                <p className="text-xs text-blue-700 mt-2 italic">✓ This window will close automatically once connected</p>
+                            </div>
                         </div>
                     )}
                 </div>
