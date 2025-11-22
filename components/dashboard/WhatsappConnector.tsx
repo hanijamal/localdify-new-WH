@@ -153,9 +153,8 @@ const WhatsappConnector: React.FC<WhatsappConnectorProps> = ({ salonId }) => {
     };
 
     useEffect(() => {
-        // Only show checking status briefly on initial load
-        setCheckingStatus(true);
-        getStatus().finally(() => setCheckingStatus(false));
+        // Run status check silently in background without showing loading UI
+        getStatus();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [salonId]);
 
@@ -285,15 +284,7 @@ const WhatsappConnector: React.FC<WhatsappConnectorProps> = ({ salonId }) => {
                         </div>
                         <h3 className="text-lg font-semibold">WhatsApp Disconnected</h3>
                         <p className="text-sm text-muted-foreground">Connect your account to enable automated confirmations and reminders.</p>
-                        <div className="flex flex-col items-center space-y-2">
-                            <Button onClick={() => connect(false)}>Connect Now</Button>
-                            {checkingStatus && (
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                    <Spinner size="sm" />
-                                    <span>Checking status…</span>
-                                </div>
-                            )}
-                        </div>
+                        <Button onClick={() => connect(false)}>Connect Now</Button>
                     </div>
                 );
         }
