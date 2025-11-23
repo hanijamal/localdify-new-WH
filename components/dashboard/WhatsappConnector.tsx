@@ -294,27 +294,27 @@ const WhatsappConnector: React.FC<WhatsappConnectorProps> = ({ salonId }) => {
         switch (status) {
             case 'loading':
             case 'pending':
-                return <div className="flex flex-col items-center justify-center p-8"><Spinner /><p className="mt-2 text-sm text-muted-foreground">Connecting...</p></div>;
+                return <div className="flex flex-col items-center justify-center p-6"><Spinner /><p className="mt-2 text-sm text-muted-foreground">Connecting...</p></div>;
             case 'disconnecting':
-                return <div className="flex flex-col items-center justify-center p-8"><Spinner /><p className="mt-2 text-sm text-muted-foreground">Disconnecting...</p></div>;
+                return <div className="flex flex-col items-center justify-center p-6"><Spinner /><p className="mt-2 text-sm text-muted-foreground">Disconnecting...</p></div>;
             case 'connected':
                 return (
-                    <div className="text-center p-8 space-y-3">
-                        <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+                    <div className="text-center p-6 space-y-3">
+                        <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
                         </div>
-                        <h3 className="text-lg font-semibold">WhatsApp Connected</h3>
+                        <h3 className="text-base font-semibold text-foreground">WhatsApp Connected</h3>
                         <p className="text-sm text-muted-foreground">Your account is active and ready to send automated messages.</p>
                         <Button variant="destructive" onClick={disconnect}>Disconnect</Button>
                     </div>
                 );
             case 'error':
                 return (
-                    <div className="text-center p-8 space-y-4">
-                        <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <div className="text-center p-6 space-y-3">
+                        <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         </div>
-                        <h3 className="text-lg font-semibold text-destructive">Connection Error</h3>
+                        <h3 className="text-base font-semibold text-destructive">Connection Error</h3>
                         <p className="text-sm text-muted-foreground">{errorMessage || 'An unknown error occurred.'}</p>
                         <Button onClick={() => connect(true)}>Try Again</Button>
                     </div>
@@ -323,11 +323,11 @@ const WhatsappConnector: React.FC<WhatsappConnectorProps> = ({ salonId }) => {
             case 'disconnected':
             default:
                 return (
-                    <div className="text-center p-8 space-y-3">
-                        <div className="w-16 h-16 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center mx-auto">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 5.636a9 9 0 010 12.728m-12.728 0a9 9 0 010-12.728m12.728 0L5.636 18.364" /></svg>
+                    <div className="text-center p-6 space-y-3">
+                        <div className="w-12 h-12 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center mx-auto">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 5.636a9 9 0 010 12.728m-12.728 0a9 9 0 010-12.728m12.728 0L5.636 18.364" /></svg>
                         </div>
-                        <h3 className="text-lg font-semibold">WhatsApp Disconnected</h3>
+                        <h3 className="text-base font-semibold text-foreground">WhatsApp Disconnected</h3>
                         <p className="text-sm text-muted-foreground">Connect your account to enable automated confirmations and reminders.</p>
                         <Button onClick={() => connect(false)}>Connect Now</Button>
                     </div>
