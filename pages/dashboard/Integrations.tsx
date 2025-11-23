@@ -142,9 +142,10 @@ export const Integrations: React.FC = () => {
 
     return (
         <div className="space-y-6">
+            {/* Page Header */}
             <div>
-                <h1 className="text-3xl font-bold text-foreground">{t('automationTitle')}</h1>
-                <p className="text-muted-foreground">{t('sidebarAutomation')}</p>
+                <h1 className="text-3xl font-bold text-foreground">Automation</h1>
+                <p className="text-muted-foreground">Automation</p>
             </div>
 
             {loading ? (
@@ -157,25 +158,25 @@ export const Integrations: React.FC = () => {
                         <div className="flex items-center gap-3">
                             <WhatsAppIcon />
                             <div>
-                                <h2 className="text-xl font-semibold">{t('whatsapp')}</h2>
-                                <p className="text-sm text-muted-foreground">{t('whatsappDesc')}</p>
+                                <h2 className="text-xl font-semibold text-foreground">WhatsApp</h2>
+                                <p className="text-sm text-muted-foreground">Send booking messages via your Business Account.</p>
                             </div>
                         </div>
 
-                        {/* Cards Grid - Side by Side */}
+                        {/* WhatsApp Cards Grid */}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {/* CARD 1: Connection Status */}
+                            {/* Connection Status Card */}
                             <Card className="w-full">
                                 <CardContent className="p-6">
                                     {business ? <WhatsappConnector salonId={business.id} /> : <div className="flex justify-center items-center h-full"><Spinner /></div>}
                                 </CardContent>
                             </Card>
 
-                            {/* CARD 2: Test Message Section */}
+                            {/* Test Message Card */}
                             <Card className="w-full">
                                 <CardContent className="p-6">
                                     <form onSubmit={handleSendTestWhatsApp} className="space-y-3">
-                                        <p className="text-sm font-medium">Send a Test WhatsApp Message</p>
+                                        <p className="text-sm font-medium text-foreground">Send a Test WhatsApp Message</p>
                                         <div className="flex flex-col sm:flex-row gap-2">
                                             <Input
                                                 type="tel"
@@ -200,7 +201,7 @@ export const Integrations: React.FC = () => {
                         <div className="flex items-center gap-3">
                             <EmailIcon />
                             <div>
-                                <h2 className="text-xl font-semibold">Template Customization</h2>
+                                <h2 className="text-xl font-semibold text-foreground">Template Customization</h2>
                                 <p className="text-sm text-muted-foreground">Configure notification settings for your business</p>
                             </div>
                         </div>
@@ -208,47 +209,83 @@ export const Integrations: React.FC = () => {
                         {/* Notification Settings Card */}
                         <Card className="w-full">
                             <CardContent className="p-6 space-y-6">
-                                <div>
-                                    <h3 className="text-base font-semibold mb-4">Client Notifications</h3>
-                                    <div className="space-y-4">
-                                        {/* Confirmation Toggle with Customize Button */}
-                                        <div className="space-y-2">
-                                            <Toggle
-                                                checked={clientConfirmationEnabled}
-                                                onChange={(value) => handleToggleChange('clientConfirmationEnabled', value)}
-                                                disabled={isSavingSettings}
-                                                label="Send Confirmation Messages"
-                                                description="Automatically send booking confirmation to clients when they make a reservation"
-                                            />
-                                            <button
-                                                onClick={() => setOpenModal('confirmation')}
-                                                className="ml-auto flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors"
-                                            >
-                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                    <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-                                                </svg>
-                                                Customize Template
-                                            </button>
-                                        </div>
+                                {/* Client Notifications */}
+                                <div className="space-y-4">
+                                    <h3 className="text-base font-semibold text-foreground">Client Notifications</h3>
 
-                                        {/* Reminder Toggle with Customize Button */}
-                                        <div className="space-y-2">
-                                            <Toggle
-                                                checked={clientReminderEnabled}
-                                                onChange={(value) => handleToggleChange('clientReminderEnabled', value)}
-                                                disabled={isSavingSettings}
-                                                label="Send Reminder Messages"
-                                                description="Send appointment reminders to clients before their scheduled time"
-                                            />
-                                            <button
-                                                onClick={() => setOpenModal('reminder')}
-                                                className="ml-auto flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors"
-                                            >
-                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                    <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-                                                </svg>
-                                                Customize Template
-                                            </button>
+                                    {/* Send Confirmation Messages */}
+                                    <div className="flex items-center justify-between gap-4">
+                                        <div className="flex-1">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex-1">
+                                                    <p className="text-sm font-medium text-foreground">Send Confirmation Messages</p>
+                                                    <p className="text-xs text-muted-foreground mt-1">Automatically send booking confirmation to clients when they make a reservation</p>
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <button
+                                                        onClick={() => setOpenModal('confirmation')}
+                                                        className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition-colors"
+                                                        type="button"
+                                                    >
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                            <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                                                        </svg>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        role="switch"
+                                                        aria-checked={clientConfirmationEnabled}
+                                                        disabled={isSavingSettings}
+                                                        onClick={() => handleToggleChange('clientConfirmationEnabled', !clientConfirmationEnabled)}
+                                                        className={`
+                                                            relative inline-flex h-6 w-11 items-center rounded-full transition-colors
+                                                            focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
+                                                            ${isSavingSettings ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                                                            ${clientConfirmationEnabled ? 'bg-primary' : 'bg-gray-300'}
+                                                        `}
+                                                    >
+                                                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${clientConfirmationEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Send Reminder Messages */}
+                                    <div className="flex items-center justify-between gap-4">
+                                        <div className="flex-1">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex-1">
+                                                    <p className="text-sm font-medium text-foreground">Send Reminder Messages</p>
+                                                    <p className="text-xs text-muted-foreground mt-1">Send appointment reminders to clients before their scheduled time</p>
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <button
+                                                        onClick={() => setOpenModal('reminder')}
+                                                        className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition-colors"
+                                                        type="button"
+                                                    >
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                            <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                                                        </svg>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        role="switch"
+                                                        aria-checked={clientReminderEnabled}
+                                                        disabled={isSavingSettings}
+                                                        onClick={() => handleToggleChange('clientReminderEnabled', !clientReminderEnabled)}
+                                                        className={`
+                                                            relative inline-flex h-6 w-11 items-center rounded-full transition-colors
+                                                            focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
+                                                            ${isSavingSettings ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                                                            ${clientReminderEnabled ? 'bg-primary' : 'bg-gray-300'}
+                                                        `}
+                                                    >
+                                                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${clientReminderEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -257,25 +294,45 @@ export const Integrations: React.FC = () => {
                                 <div className="border-t border-border"></div>
 
                                 {/* Salon Owner Notifications */}
-                                <div>
-                                    <h3 className="text-base font-semibold mb-4">Salon Owner Notifications</h3>
-                                    <div className="space-y-2">
-                                        <Toggle
-                                            checked={ownerNotificationEnabled}
-                                            onChange={(value) => handleToggleChange('ownerNotificationEnabled', value)}
-                                            disabled={isSavingSettings}
-                                            label="Receive Owner Notifications"
-                                            description="Get notified when new bookings are made or existing bookings are updated"
-                                        />
-                                        <button
-                                            onClick={() => setOpenModal('owner')}
-                                            className="ml-auto flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors"
-                                        >
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-                                            </svg>
-                                            Customize Template
-                                        </button>
+                                <div className="space-y-4">
+                                    <h3 className="text-base font-semibold text-foreground">Salon Owner Notifications</h3>
+
+                                    {/* Receive Owner Notifications */}
+                                    <div className="flex items-center justify-between gap-4">
+                                        <div className="flex-1">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex-1">
+                                                    <p className="text-sm font-medium text-foreground">Receive Owner Notifications</p>
+                                                    <p className="text-xs text-muted-foreground mt-1">Get notified when new bookings are made or existing bookings are updated</p>
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <button
+                                                        onClick={() => setOpenModal('owner')}
+                                                        className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition-colors"
+                                                        type="button"
+                                                    >
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                            <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                                                        </svg>
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        role="switch"
+                                                        aria-checked={ownerNotificationEnabled}
+                                                        disabled={isSavingSettings}
+                                                        onClick={() => handleToggleChange('ownerNotificationEnabled', !ownerNotificationEnabled)}
+                                                        className={`
+                                                            relative inline-flex h-6 w-11 items-center rounded-full transition-colors
+                                                            focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
+                                                            ${isSavingSettings ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                                                            ${ownerNotificationEnabled ? 'bg-primary' : 'bg-gray-300'}
+                                                        `}
+                                                    >
+                                                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${ownerNotificationEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
