@@ -1,6 +1,6 @@
 
 // FIX: Import useState from React to resolve 'Cannot find name' errors.
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useBusiness } from '../../hooks/useBusiness';
 import Card, { CardContent, CardHeader, CardFooter } from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
@@ -12,6 +12,8 @@ import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import WhatsappConnector from '../../components/dashboard/WhatsappConnector';
 import TemplateModal from '../../components/dashboard/TemplateModal';
+import Modal from '../../components/ui/Modal';
+import QRCode from 'qrcode';
 
 // Ensure this URL matches your Railway deployment
 const WHATSAPP_BACKEND_URL = 'https://localdify-whatsapp-backend-service-production.up.railway.app';
@@ -28,9 +30,16 @@ const EmailIcon = () => (
     </svg>
 );
 
+type ConnectionStatus = 'disconnected' | 'pending' | 'connected' | 'error' | 'loading';
+
 export const Integrations: React.FC = () => {
     const { business, loading: businessLoading, refetch, setBusiness } = useBusiness();
     const { t } = useLanguage();
+
+    // WhatsApp Connection State
+    const [whatsappConnectionStatus, setWhatsappConnectionStatus] = useState<ConnectionStatus>('disconnected');
+    const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+    const [qrCode, setQrCode] = useState<string | null>(null);
 
     // WhatsApp Test State
     const [testWhatsAppNumber, setTestWhatsAppNumber] = useState('');
@@ -49,6 +58,76 @@ export const Integrations: React.FC = () => {
     const [openModal, setOpenModal] = useState<'confirmation' | 'reminder' | 'owner' | null>(null);
 
     const loading = businessLoading;
+
+    // Check WhatsApp connection status
+    const getWhatsAppStatus = useCallback(async () => {
+        if (!business) return;
+        try {
+            const response = await fetch(`${WHATSAPP_BACKEND_URL}/api/whatsapp/status?salon_id=${business.id}`);
+            if (!response.ok) throw new Error('Failed to fetch status');
+            const data = await response.json();
+            setWhatsappConnectionStatus(data.status);
+        } catch (err) {
+            console.error('Status fetch error:', err);
+            setWhatsappConnectionStatus('disconnected');
+        }
+    }, [business]);
+
+    // Connect WhatsApp
+    const connectWhatsApp = async () => {
+        if (!business) return;
+        setWhatsappConnectionStatus('loading');
+        setQrCode(null);
+        setIsQrModalOpen(true);
+
+        try {
+            const response = await fetch(`${WHATSAPP_BACKEND_URL}/api/whatsapp/connect`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ salon_id: business.id }),
+            });
+
+            if (!response.ok) throw new Error('Connection failed');
+
+            const data = await response.json();
+            if (data.qr) {
+                const qrDataUrl = await QRCode.toDataURL(data.qr, { width: 256, margin: 1 });
+                setQrCode(qrDataUrl);
+                setWhatsappConnectionStatus('pending');
+            } else if (data.status === 'connected') {
+                setWhatsappConnectionStatus('connected');
+                setIsQrModalOpen(false);
+            }
+        } catch (err: any) {
+            console.error('Connect error:', err);
+            setWhatsappConnectionStatus('error');
+            setIsQrModalOpen(false);
+        }
+    };
+
+    // Disconnect WhatsApp
+    const disconnectWhatsApp = async () => {
+        if (!business) return;
+        try {
+            const response = await fetch(`${WHATSAPP_BACKEND_URL}/api/whatsapp/disconnect`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ salon_id: business.id }),
+            });
+
+            if (!response.ok) throw new Error('Disconnect failed');
+            setWhatsappConnectionStatus('disconnected');
+        } catch (err: any) {
+            console.error('Disconnect error:', err);
+        }
+    };
+
+    // Load WhatsApp status on mount
+    useEffect(() => {
+        if (business) {
+            getWhatsAppStatus();
+        }
+    }, [business, getWhatsAppStatus]);
 
     // Load notification settings from business data
     useEffect(() => {
@@ -163,36 +242,72 @@ export const Integrations: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* WhatsApp Cards Grid */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {/* Connection Status Card */}
-                            <Card className="w-full">
-                                <CardContent className="p-6">
-                                    {business ? <WhatsappConnector salonId={business.id} /> : <div className="flex justify-center items-center h-full"><Spinner /></div>}
-                                </CardContent>
-                            </Card>
+                        {/* Single WhatsApp Card */}
+                        <Card className="w-full">
+                            <CardContent className="p-6 space-y-6">
+                                {/* Connection Status - Horizontal Layout */}
+                                {business ? (
+                                    <div className="flex items-center gap-4 p-4 border border-border rounded-lg">
+                                        {whatsappConnectionStatus === 'connected' ? (
+                                            <>
+                                                <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center flex-shrink-0">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                                    </svg>
+                                                </div>
+                                                <div className="flex-1">
+                                                    <h3 className="text-base font-semibold text-foreground">WhatsApp Connected</h3>
+                                                    <p className="text-sm text-muted-foreground">Your account is active and ready to send automated messages.</p>
+                                                </div>
+                                                <Button onClick={disconnectWhatsApp} variant="destructive" className="flex-shrink-0">Disconnect</Button>
+                                            </>
+                                        ) : whatsappConnectionStatus === 'loading' || whatsappConnectionStatus === 'pending' ? (
+                                            <>
+                                                <div className="w-12 h-12 flex items-center justify-center flex-shrink-0">
+                                                    <Spinner />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <h3 className="text-base font-semibold text-foreground">Connecting...</h3>
+                                                    <p className="text-sm text-muted-foreground">Please wait while we establish the connection.</p>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="w-12 h-12 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center flex-shrink-0">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 5.636a9 9 0 010 12.728m-12.728 0a9 9 0 010-12.728m12.728 0L5.636 18.364" />
+                                                    </svg>
+                                                </div>
+                                                <div className="flex-1">
+                                                    <h3 className="text-base font-semibold text-foreground">WhatsApp Disconnected</h3>
+                                                    <p className="text-sm text-muted-foreground">Connect your account to enable automated confirmations and reminders.</p>
+                                                </div>
+                                                <Button onClick={connectWhatsApp} className="flex-shrink-0">Connect Now</Button>
+                                            </>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="flex justify-center items-center h-20"><Spinner /></div>
+                                )}
 
-                            {/* Test Message Card */}
-                            <Card className="w-full">
-                                <CardContent className="p-6">
-                                    <form onSubmit={handleSendTestWhatsApp} className="space-y-3">
-                                        <p className="text-sm font-medium text-foreground">Send a Test WhatsApp Message</p>
-                                        <div className="flex flex-col sm:flex-row gap-2">
-                                            <Input
-                                                type="tel"
-                                                placeholder="+1234567890"
-                                                value={testWhatsAppNumber}
-                                                onChange={e => setTestWhatsAppNumber(e.target.value)}
-                                                required
-                                                className="flex-grow"
-                                            />
-                                            <Button type="submit" variant="secondary" isLoading={isSendingWhatsAppTest} className="w-full sm:w-auto">Send Test</Button>
-                                        </div>
-                                        {whatsappStatus && <p className={`text-xs mt-1 ${whatsappStatus.type === 'success' ? 'text-green-600' : 'text-destructive'}`}>{whatsappStatus.text}</p>}
+                                {/* Test Message Section */}
+                                <div className="space-y-3">
+                                    <p className="text-sm font-medium text-foreground">Send a Test WhatsApp Message</p>
+                                    <form onSubmit={handleSendTestWhatsApp} className="flex gap-2">
+                                        <Input
+                                            type="tel"
+                                            placeholder="+212 6 ********"
+                                            value={testWhatsAppNumber}
+                                            onChange={e => setTestWhatsAppNumber(e.target.value)}
+                                            required
+                                            className="flex-grow"
+                                        />
+                                        <Button type="submit" variant="secondary" isLoading={isSendingWhatsAppTest}>Send test</Button>
                                     </form>
-                                </CardContent>
-                            </Card>
-                        </div>
+                                    {whatsappStatus && <p className={`text-xs ${whatsappStatus.type === 'success' ? 'text-green-600' : 'text-destructive'}`}>{whatsappStatus.text}</p>}
+                                </div>
+                            </CardContent>
+                        </Card>
                     </div>
 
                     {/* Template Customization Section */}
@@ -368,6 +483,7 @@ export const Integrations: React.FC = () => {
                 </div>
             )}
 
+
             {/* Template Modals */}
             {business && (
                 <>
@@ -391,6 +507,33 @@ export const Integrations: React.FC = () => {
                     />
                 </>
             )}
+
+            {/* WhatsApp QR Code Modal */}
+            <Modal
+                isOpen={isQrModalOpen}
+                onClose={() => setIsQrModalOpen(false)}
+                title="Connect WhatsApp"
+                footer={<Button variant="ghost" onClick={() => setIsQrModalOpen(false)}>Cancel</Button>}
+            >
+                <div className="text-center space-y-4">
+                    {qrCode ? (
+                        <img
+                            src={qrCode}
+                            alt="WhatsApp QR Code"
+                            className="mx-auto p-2 bg-white rounded-lg shadow-md max-w-[256px] w-full"
+                        />
+                    ) : (
+                        <div className="flex justify-center items-center h-48"><Spinner /></div>
+                    )}
+                    <h3 className="text-base font-semibold">Scan the QR code to sync with WhatsApp</h3>
+                    <ol className="text-sm text-muted-foreground text-left list-decimal list-inside space-y-1.5">
+                        <li>Open WhatsApp on your phone</li>
+                        <li>Tap Menu on Android, or Settings on iPhone</li>
+                        <li>Tap Linked devices and then Link a device</li>
+                        <li>Point your phone at this screen to capture the QR code</li>
+                    </ol>
+                </div>
+            </Modal>
         </div>
     );
 };
