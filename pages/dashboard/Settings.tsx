@@ -730,15 +730,29 @@ const Settings: React.FC = () => {
                                     </div>
                                     {linkError && <p className="text-destructive text-sm mt-2">{linkError}</p>}
                                 </CardContent>
-                                <CardFooter className="flex-wrap items-center gap-2">
-                                    <Button type="submit" isLoading={isSubmittingLink}>
+                                <CardFooter className="flex flex-col sm:flex-row gap-3 bg-muted/50 border-t border-border">
+                                    <Button
+                                        type="submit"
+                                        isLoading={isSubmittingLink}
+                                        className="w-full sm:w-auto"
+                                    >
                                         {t('saveLink')}
                                     </Button>
-                                    <Button onClick={() => copyLinkToClipboard(publicBookingLink)} type="button" variant="secondary" className="w-24">
+                                    <Button
+                                        onClick={() => copyLinkToClipboard(publicBookingLink)}
+                                        type="button"
+                                        variant="secondary"
+                                        className="w-full sm:w-auto"
+                                    >
                                         {linkCopied ? t('copied') : t('copyLink')}
                                     </Button>
-                                    <Button type="button" onClick={() => setIsQrModalOpen(true)} variant="secondary">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <Button
+                                        type="button"
+                                        onClick={() => setIsQrModalOpen(true)}
+                                        variant="secondary"
+                                        className="w-full sm:w-auto"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ltr:mr-2 rtl:ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M4 4h6v6H4V4z" />
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M14 4h6v6h-6V4z" />
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M4 14h6v6H4v-6z" />
@@ -749,8 +763,12 @@ const Settings: React.FC = () => {
                                         </svg>
                                         {t('qrCode')}
                                     </Button>
-                                    <Button type="button" onClick={handlePreview}>
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <Button
+                                        type="button"
+                                        onClick={handlePreview}
+                                        className="w-full sm:w-auto"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ltr:mr-2 rtl:ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                                         </svg>
                                         {t('preview')}
