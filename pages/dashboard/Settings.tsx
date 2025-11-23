@@ -753,16 +753,49 @@ const Settings: React.FC = () => {
                                     </div>
                                     <p className="text-sm text-muted-foreground">{t('connectYourDomainDesc')}</p>
                                 </CardHeader>
-                                <CardContent>
+                                <CardContent className="space-y-4">
                                     <Input
                                         label="Your Custom Domain"
                                         placeholder={t('customDomainPlaceholder')}
                                         value={customDomain}
                                         onChange={(e) => setCustomDomain(e.target.value)}
                                     />
-                                    <p className="text-xs text-muted-foreground mt-2">
-                                        {t('cnameInstructions')}
-                                    </p>
+
+                                    {/* CNAME Instructions */}
+                                    {customDomain && business?.customDomain ? (
+                                        <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                                            <h4 className="text-sm font-semibold text-foreground mb-2">DNS Configuration Required</h4>
+                                            <p className="text-xs text-muted-foreground mb-3">
+                                                After saving, you will need to add a <span className="font-semibold text-blue-600 dark:text-blue-400">CNAME record</span> in your domain provider's DNS settings.
+                                            </p>
+
+                                            <div className="space-y-2 bg-white dark:bg-gray-800 p-3 rounded border border-border">
+                                                <div className="grid grid-cols-3 gap-2 text-xs">
+                                                    <div>
+                                                        <span className="font-semibold text-muted-foreground">Type:</span>
+                                                        <p className="font-mono text-foreground mt-1">CNAME</p>
+                                                    </div>
+                                                    <div>
+                                                        <span className="font-semibold text-muted-foreground">Name:</span>
+                                                        <p className="font-mono text-foreground mt-1 break-all">{customDomain.replace(/^https?:\/\//, '').split('/')[0]}</p>
+                                                    </div>
+                                                    <div>
+                                                        <span className="font-semibold text-muted-foreground">Value:</span>
+                                                        <p className="font-mono text-foreground mt-1 break-all">{window.location.hostname}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <p className="text-xs text-muted-foreground mt-3">
+                                                <span className="font-semibold">Note:</span> DNS changes can take up to 48 hours to propagate.
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <p className="text-xs text-muted-foreground mt-2">
+                                            {t('cnameInstructions')}
+                                        </p>
+                                    )}
+
                                     {domainError && <p className="text-destructive text-sm mt-2">{domainError}</p>}
                                     {domainSuccess && <p className="text-green-600 text-sm mt-2">{domainSuccess}</p>}
                                 </CardContent>
