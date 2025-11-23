@@ -44,12 +44,14 @@ import AdminPages from './pages/admin/Pages';
 import Home from './pages/Home';
 import Pricing from './pages/Pricing';
 import GenericPage from './pages/GenericPage';
+import CustomDomainRouter from './pages/CustomDomainRouter';
 
 const App: React.FC = () => {
   return (
     <Routes>
-      {/* Root redirect */}
-      <Route path="/" element={<Home />} />
+      {/* Root redirect - Check for custom domain first */}
+      <Route path="/" element={<CustomDomainRouter />} />
+      <Route path="/home" element={<Home />} />
 
       {/* Group for public-facing routes */}
       <Route element={<Outlet />}>
