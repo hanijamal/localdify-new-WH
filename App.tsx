@@ -45,6 +45,7 @@ import Home from './pages/Home';
 import Pricing from './pages/Pricing';
 import GenericPage from './pages/GenericPage';
 import CustomDomainRouter from './pages/CustomDomainRouter';
+import CustomDomainTester from './pages/CustomDomainTester';
 
 const App: React.FC = () => {
   return (
@@ -69,6 +70,7 @@ const App: React.FC = () => {
         <Route path="/trial-ended" element={<TrialEnded />} />
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/p/:slug" element={<GenericPage />} />
+        <Route path="/test-domain" element={<CustomDomainTester />} />
       </Route>
 
       {/* User Dashboard routes */}
