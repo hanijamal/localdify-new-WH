@@ -1,14 +1,14 @@
 import React, { createContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { User } from '../types';
 import { supabase } from '../supabaseClient';
-import { 
-    loginUser, 
-    registerUser,
-    logoutUser as apiLogoutUser,
-    getUserProfile,
-    updateUserProfile as apiUpdateUserProfile, 
-    updateUserPassword as apiUpdateUserPassword,
-    sendPasswordResetEmail
+import {
+  loginUser,
+  registerUser,
+  logoutUser as apiLogoutUser,
+  getUserProfile,
+  updateUserProfile as apiUpdateUserProfile,
+  updateUserPassword as apiUpdateUserPassword,
+  sendPasswordResetEmail
 } from '../services/supabaseService';
 
 
@@ -27,18 +27,18 @@ interface AuthContextType {
   refreshUser: () => Promise<User | null>;
 }
 
-export const AuthContext = createContext<AuthContextType>({ 
-  user: null, 
+export const AuthContext = createContext<AuthContextType>({
+  user: null,
   loading: true,
   isPasswordRecovery: false,
   isAdmin: false,
   login: async () => null,
-  register: async () => {},
-  logout: () => {},
-  updateUserProfile: async () => {},
-  updateUserPassword: async () => {},
-  sendPasswordResetLink: async () => {},
-  updatePasswordForRecovery: async () => {},
+  register: async () => { },
+  logout: () => { },
+  updateUserProfile: async () => { },
+  updateUserPassword: async () => { },
+  sendPasswordResetLink: async () => { },
+  updatePasswordForRecovery: async () => { },
   refreshUser: async () => null,
 });
 
@@ -47,8 +47,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  // Use a ref to capture the initial URL state, as the hash may be cleared by Supabase client
-  const isRecoveryUrlOnLoad = useRef(window.location.hash.includes('type=recovery'));
+  // Use a ref to capture the initial URL state
+  const isRecoveryUrlOnLoad = useRef(
+    window.location.search.includes('type=recovery') ||
+    window.location.hash.includes('type=recovery')
+  );
 
   const logout = useCallback(async () => {
     await apiLogoutUser();
@@ -98,52 +101,46 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
 
   useEffect(() => {
-    // --- START: Manual fix for HashRouter + Supabase recovery link ---
+    // --- START: Manual fix for BrowserRouter + Supabase recovery link ---
+    const searchParams = new URLSearchParams(window.location.search);
     const hash = window.location.hash;
-    // Check for the specific malformed hash: #/update-password#access_token=...
-    if (hash.startsWith('#/update-password#')) {
-        const supabaseFragment = hash.substring('#/update-password#'.length);
-        const params = new URLSearchParams(supabaseFragment);
-        const accessToken = params.get('access_token');
-        const refreshToken = params.get('refresh_token');
-        const type = params.get('type');
 
-        if (type === 'recovery' && accessToken && refreshToken) {
-            console.log("Malformed recovery URL detected. Manually setting session.");
-            
-            // Manually set the session using the tokens from the URL.
-            // This authenticates the user for the password update.
-            supabase.auth.setSession({
-                access_token: accessToken,
-                refresh_token: refreshToken,
-            }).then(({ data, error }) => {
-                if (error) {
-                    console.error("Error manually setting session:", error);
-                    setLoading(false);
-                } else {
-                    // Session is set. Now update the app state to reflect we are in recovery mode.
-                    setIsPasswordRecovery(true);
-                    setLoading(false);
-                }
-            });
+    // Check if we have recovery tokens in URL params or hash
+    const accessToken = searchParams.get('access_token') || new URLSearchParams(hash.substring(1)).get('access_token');
+    const refreshToken = searchParams.get('refresh_token') || new URLSearchParams(hash.substring(1)).get('refresh_token');
+    const type = searchParams.get('type') || new URLSearchParams(hash.substring(1)).get('type');
 
-            // Clean up the URL hash to prevent this logic from running again
-            // and to remove the tokens from the address bar.
-            window.history.replaceState(null, '', window.location.pathname + window.location.search + '#/update-password');
-            
-            // Prevent the rest of the effect from running, as we've handled this special case.
-            return;
+    if (type === 'recovery' && accessToken && refreshToken && window.location.pathname.includes('/update-password')) {
+      console.log("Recovery URL detected. Manually setting session.");
+
+      // Manually set the session using the tokens from the URL.
+      supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      }).then(({ data, error }) => {
+        if (error) {
+          console.error("Error manually setting session:", error);
+          setLoading(false);
+        } else {
+          setIsPasswordRecovery(true);
+          setLoading(false);
         }
+      });
+
+      // Clean up the URL to remove tokens
+      window.history.replaceState(null, '', '/update-password');
+
+      return;
     }
     // --- END: Manual fix ---
 
     const recoveryTimeout = setTimeout(() => {
-        if (isRecoveryUrlOnLoad.current && loading) {
-            console.warn("Timed out waiting for PASSWORD_RECOVERY event. Link is likely invalid or expired.");
-            setLoading(false);
-            setIsPasswordRecovery(false);
-            isRecoveryUrlOnLoad.current = false; // Stop waiting
-        }
+      if (isRecoveryUrlOnLoad.current && loading) {
+        console.warn("Timed out waiting for PASSWORD_RECOVERY event. Link is likely invalid or expired.");
+        setLoading(false);
+        setIsPasswordRecovery(false);
+        isRecoveryUrlOnLoad.current = false; // Stop waiting
+      }
     }, 3000);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -162,7 +159,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (isRecoveryUrlOnLoad.current) {
         return;
       }
-      
+
       // --- This is the standard auth flow for all other cases (login, logout, session refresh) ---
       clearTimeout(recoveryTimeout);
       setIsPasswordRecovery(false);
@@ -226,13 +223,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const register = async (name: string, email: string, pass: string) => {
-     await registerUser(name, email, pass);
+    await registerUser(name, email, pass);
   }
-  
+
   const updateUserProfile = async (data: Partial<User>) => {
-      if (!user) throw new Error("Not logged in");
-      const updatedUser = await apiUpdateUserProfile(user.id, data);
-      setUser(updatedUser);
+    if (!user) throw new Error("Not logged in");
+    const updatedUser = await apiUpdateUserProfile(user.id, data);
+    setUser(updatedUser);
   };
 
   const updateUserPassword = async (oldPass: string, newPass: string) => {
@@ -253,19 +250,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
 
   return (
-    <AuthContext.Provider value={{ 
-        user, 
-        loading, 
-        isPasswordRecovery,
-        isAdmin,
-        login, 
-        register, 
-        logout, 
-        updateUserProfile, 
-        updateUserPassword,
-        sendPasswordResetLink,
-        updatePasswordForRecovery,
-        refreshUser
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      isPasswordRecovery,
+      isAdmin,
+      login,
+      register,
+      logout,
+      updateUserProfile,
+      updateUserPassword,
+      sendPasswordResetLink,
+      updatePasswordForRecovery,
+      refreshUser
     }}>
       {children}
     </AuthContext.Provider>

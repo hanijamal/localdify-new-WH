@@ -125,8 +125,8 @@ const Settings: React.FC = () => {
     useEffect(() => {
         const origin = window.location.origin;
         if (slug) {
-            // Keep hash format for actual functionality
-            setPublicBookingLink(`${origin}/#/b/${slug}`);
+            // Clean URL without hash (BrowserRouter)
+            setPublicBookingLink(`${origin}/b/${slug}`);
         } else {
             setPublicBookingLink('');
         }
