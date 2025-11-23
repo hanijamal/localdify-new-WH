@@ -39,9 +39,9 @@ const Settings: React.FC = () => {
     const { user } = useAuth();
     const { business, services, staff, loading, refetch, setBusiness } = useBusiness();
     const { t } = useLanguage();
-    
+
     const [isSubmitting, setIsSubmitting] = useState(false);
-    
+
     // Business Details State
     const [businessName, setBusinessName] = useState('');
     const [slug, setSlug] = useState('');
@@ -58,7 +58,7 @@ const Settings: React.FC = () => {
         whatsapp: '',
     });
     const [defaultLanguage, setDefaultLanguage] = useState('en');
-    
+
     // Theme Settings State
     const [primaryColor, setPrimaryColor] = useState('#00cc61');
     const [secondaryColor, setSecondaryColor] = useState('#004050');
@@ -77,12 +77,18 @@ const Settings: React.FC = () => {
     const [isSubmittingLink, setIsSubmittingLink] = useState(false);
     const [linkError, setLinkError] = useState('');
     const [isQrModalOpen, setIsQrModalOpen] = useState(false);
-    
+
+    // Custom Domain State
+    const [customDomain, setCustomDomain] = useState('');
+    const [isSavingDomain, setIsSavingDomain] = useState(false);
+    const [domainError, setDomainError] = useState('');
+    const [domainSuccess, setDomainSuccess] = useState('');
+
     // Image Validation State
     const [imageErrors, setImageErrors] = useState({ business: '', gallery: '', newService: '', cover: '' });
     const [businessImageFileName, setBusinessImageFileName] = useState<string | null>(null);
     const [galleryImageFileName, setGalleryImageFileName] = useState<string | null>(null);
-    
+
     const MAX_GALLERY_IMAGES = 5;
     const MAX_IMAGE_SIZE_KB = 100;
 
@@ -101,6 +107,7 @@ const Settings: React.FC = () => {
                 whatsapp: business.socials?.whatsapp || '',
             });
             setDefaultLanguage(business.defaultLanguage || 'en');
+            setCustomDomain(business.customDomain || '');
             if (business.themeSettings) {
                 setPrimaryColor(business.themeSettings.primaryColor || '#00cc61');
                 setSecondaryColor(business.themeSettings.secondaryColor || '#004050');
@@ -114,7 +121,7 @@ const Settings: React.FC = () => {
             }
         }
     }, [business]);
-    
+
     useEffect(() => {
         const origin = window.location.origin;
         if (slug) {
@@ -129,10 +136,10 @@ const Settings: React.FC = () => {
         if (!user || !business) return;
 
         const oldCurrency = business.currency; // Store old currency for rollback
-        
+
         setIsSavingCurrency(true);
         setCurrencyStatus('');
-        
+
         // Optimistic UI update
         setCurrency(newCurrency);
         setBusiness(prev => prev ? { ...prev, currency: newCurrency } : null);
@@ -142,7 +149,7 @@ const Settings: React.FC = () => {
             // the RLS policy on the 'businesses' table handles security.
             // FIX: Added the missing 'userId' property to the payload to match the expected type for 'createOrUpdateBusiness'.
             await createOrUpdateBusiness({ id: business.id, userId: user.id, currency: newCurrency });
-            
+
             // On success, refetch to ensure data is consistent with the DB.
             await refetch();
             setCurrencyStatus(t('currencyUpdateSuccess'));
@@ -150,7 +157,7 @@ const Settings: React.FC = () => {
         } catch (error: any) {
             console.error("Failed to update currency:", error.message);
             setCurrencyStatus(t('currencyUpdateError'));
-            
+
             // On error, revert the optimistic UI update.
             setBusiness(prev => prev ? { ...prev, currency: oldCurrency } : null);
             setCurrency(oldCurrency);
@@ -158,7 +165,7 @@ const Settings: React.FC = () => {
             setIsSavingCurrency(false);
         }
     };
-    
+
 
     const handleBusinessSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -197,7 +204,7 @@ const Settings: React.FC = () => {
             setIsSubmitting(false);
         }
     };
-    
+
     const handleLinkSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user || !business) return;
@@ -217,6 +224,32 @@ const Settings: React.FC = () => {
             setLinkError(error.message || 'An unexpected error occurred.');
         } finally {
             setIsSubmittingLink(false);
+        }
+    };
+
+    const handleDomainSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user || !business) return;
+        setIsSavingDomain(true);
+        setDomainError('');
+        setDomainSuccess('');
+
+        try {
+            const payload: Partial<Business> & { userId: string } = {
+                id: business.id,
+                userId: user.id,
+                customDomain: customDomain,
+            };
+
+            await createOrUpdateBusiness(payload);
+            await refetch();
+            setDomainSuccess('Custom domain saved successfully!');
+            setTimeout(() => setDomainSuccess(''), 3000);
+        } catch (error: any) {
+            console.error("Failed to save custom domain:", error.message);
+            setDomainError(error.message || 'An unexpected error occurred.');
+        } finally {
+            setIsSavingDomain(false);
         }
     };
 
@@ -260,7 +293,7 @@ const Settings: React.FC = () => {
             }
 
             const availableSlots = MAX_GALLERY_IMAGES - galleryImages.length;
-            
+
             for (let i = 0; i < Math.min(files.length, availableSlots); i++) {
                 const file = files.item(i);
                 if (file) {
@@ -275,7 +308,7 @@ const Settings: React.FC = () => {
                     validFiles.push(file);
                 }
             }
-            
+
             if (currentErrors.length > 0) {
                 setImageErrors(prev => ({ ...prev, gallery: currentErrors.join(' ') }));
             }
@@ -318,7 +351,7 @@ const Settings: React.FC = () => {
         }
         e.target.value = '';
     };
-    
+
     const handleRemoveGalleryImage = (indexToRemove: number) => {
         setGalleryImages(prev => prev.filter((_, index) => index !== indexToRemove));
     };
@@ -328,7 +361,7 @@ const Settings: React.FC = () => {
             window.open(publicBookingLink, '_blank');
         }
     };
-    
+
     if (loading) {
         return <div className="flex justify-center items-center h-full"><Spinner /></div>;
     }
@@ -336,7 +369,7 @@ const Settings: React.FC = () => {
     const imagePlaceholder = (
         <div className="w-24 h-24 bg-muted rounded-md flex items-center justify-center">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
         </div>
     );
@@ -346,7 +379,7 @@ const Settings: React.FC = () => {
             <Accordion title={t('businessDetails')} defaultOpen={!business}>
                 <form onSubmit={handleBusinessSubmit}>
                     <div className="p-4 sm:p-6 space-y-6">
-                         <p className="text-sm text-muted-foreground -mt-2">{t('businessDetailsDesc')}</p>
+                        <p className="text-sm text-muted-foreground -mt-2">{t('businessDetailsDesc')}</p>
                         <Input label={t('businessNameLabel')} value={businessName} onChange={e => setBusinessName(e.target.value)} required />
                         <Select
                             label={t('currency')}
@@ -386,7 +419,7 @@ const Settings: React.FC = () => {
                                 className="block w-full px-3 py-2 bg-card border border-input rounded-md shadow-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring sm:text-sm"
                             />
                         </div>
-                         <div>
+                        <div>
                             <label className="block text-sm font-medium text-foreground mb-1">{t('businessPhotoLabel')}</label>
                             <div className="flex items-center space-x-4">
                                 {imageUrl ? (
@@ -415,8 +448,8 @@ const Settings: React.FC = () => {
                                             onChange={handleImageUpload}
                                             className="absolute w-0 h-0 opacity-0 peer"
                                         />
-                                        <label 
-                                            htmlFor="business-image-upload" 
+                                        <label
+                                            htmlFor="business-image-upload"
                                             className="flex items-center w-full h-10 px-3 bg-card border border-input rounded-md shadow-sm cursor-pointer focus-within:ring-1 focus-within:ring-ring"
                                         >
                                             <span className="inline-block bg-primary/10 text-primary hover:bg-primary/20 text-sm font-semibold px-3 py-1 rounded-md transition-colors">
@@ -440,10 +473,10 @@ const Settings: React.FC = () => {
                                     <label className="block text-sm font-medium text-foreground mb-2">{t('brandColors')}</label>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                                            <input 
-                                                type="color" 
-                                                id="primaryColor" 
-                                                value={primaryColor} 
+                                            <input
+                                                type="color"
+                                                id="primaryColor"
+                                                value={primaryColor}
                                                 onChange={e => setPrimaryColor(e.target.value)}
                                                 className="w-10 h-10 p-1 border border-input rounded-md cursor-pointer"
                                             />
@@ -453,10 +486,10 @@ const Settings: React.FC = () => {
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                                            <input 
-                                                type="color" 
-                                                id="secondaryColor" 
-                                                value={secondaryColor} 
+                                            <input
+                                                type="color"
+                                                id="secondaryColor"
+                                                value={secondaryColor}
                                                 onChange={e => setSecondaryColor(e.target.value)}
                                                 className="w-10 h-10 p-1 border border-input rounded-md cursor-pointer"
                                             />
@@ -496,8 +529,8 @@ const Settings: React.FC = () => {
                                                     onChange={handleCoverImageUpload}
                                                     className="absolute w-0 h-0 opacity-0 peer"
                                                 />
-                                                <label 
-                                                    htmlFor="cover-image-upload" 
+                                                <label
+                                                    htmlFor="cover-image-upload"
                                                     className="flex items-center w-full h-10 px-3 bg-card border border-input rounded-md shadow-sm cursor-pointer focus-within:ring-1 focus-within:ring-ring"
                                                 >
                                                     <span className="inline-block bg-primary/10 text-primary hover:bg-primary/20 text-sm font-semibold px-3 py-1 rounded-md transition-colors">
@@ -518,12 +551,12 @@ const Settings: React.FC = () => {
 
                         <div>
                             <label className="block text-sm font-medium text-foreground mb-1">{t('galleryImagesLabel')}</label>
-                             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 sm:gap-4">
+                            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 sm:gap-4">
                                 {galleryImages.map((img, index) => (
                                     <div key={index} className="relative group aspect-square">
                                         <img src={img} alt={`Gallery image ${index + 1}`} className="w-full h-full object-cover rounded-md" />
-                                        <button 
-                                            type="button" 
+                                        <button
+                                            type="button"
                                             onClick={() => handleRemoveGalleryImage(index)}
                                             className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                                             aria-label="Remove image"
@@ -546,8 +579,8 @@ const Settings: React.FC = () => {
                                         className="absolute w-0 h-0 opacity-0 peer"
                                         disabled={galleryImages.length >= MAX_GALLERY_IMAGES}
                                     />
-                                    <label 
-                                        htmlFor="gallery-image-upload" 
+                                    <label
+                                        htmlFor="gallery-image-upload"
                                         className={`flex items-center w-full h-10 px-3 bg-card border border-input rounded-md shadow-sm focus-within:ring-1 focus-within:ring-ring ${galleryImages.length >= MAX_GALLERY_IMAGES ? 'cursor-not-allowed bg-muted' : 'cursor-pointer'}`}
                                     >
                                         <span className={`inline-block text-sm font-semibold px-3 py-1 rounded-md transition-colors ${galleryImages.length >= MAX_GALLERY_IMAGES ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary hover:bg-primary/20'}`}>
@@ -566,28 +599,28 @@ const Settings: React.FC = () => {
                         <div className="border-t border-border pt-6">
                             <label className="block text-lg font-medium text-foreground mb-4">{t('socialMediaLinks')}</label>
                             <div className="space-y-4">
-                                <Input 
+                                <Input
                                     label={t('websiteUrlLabel')}
                                     placeholder={t('websitePlaceholder')}
-                                    value={socials.website} 
+                                    value={socials.website}
                                     onChange={e => setSocials(s => ({ ...s, website: e.target.value }))}
                                 />
-                                <Input 
+                                <Input
                                     label={t('instagramUrlLabel')}
                                     placeholder={t('instagramPlaceholder')}
-                                    value={socials.instagram} 
+                                    value={socials.instagram}
                                     onChange={e => setSocials(s => ({ ...s, instagram: e.target.value }))}
                                 />
-                                <Input 
-                                    label={t('facebookUrlLabel')} 
+                                <Input
+                                    label={t('facebookUrlLabel')}
                                     placeholder={t('facebookPlaceholder')}
-                                    value={socials.facebook} 
+                                    value={socials.facebook}
                                     onChange={e => setSocials(s => ({ ...s, facebook: e.target.value }))}
                                 />
-                                <Input 
+                                <Input
                                     label={t('whatsappContactLabel')}
-                                    placeholder={t('whatsappContactPlaceholder')} 
-                                    value={socials.whatsapp} 
+                                    placeholder={t('whatsappContactPlaceholder')}
+                                    value={socials.whatsapp}
                                     onChange={e => setSocials(s => ({ ...s, whatsapp: e.target.value }))}
                                     helperText={t('whatsappContactHelper')}
                                 />
@@ -596,49 +629,49 @@ const Settings: React.FC = () => {
 
                     </div>
                     <div className="p-4 sm:p-6 bg-muted/50 border-t border-border text-right">
-                         <Button type="submit" isLoading={isSubmitting}>{t('saveChanges')}</Button>
+                        <Button type="submit" isLoading={isSubmitting}>{t('saveChanges')}</Button>
                     </div>
                 </form>
             </Accordion>
-            
-             {business && (
-                 <Accordion title={t('calendarSettings')}>
+
+            {business && (
+                <Accordion title={t('calendarSettings')}>
                     <form onSubmit={handleBusinessSubmit}>
                         <div className="p-4 sm:p-6 space-y-6">
                             <p className="text-sm text-muted-foreground -mt-2">{t('calendarSettingsDesc')}</p>
-                            <Input 
+                            <Input
                                 label={t('bookableInAdvanceLabel')}
                                 type="number"
                                 min="1"
-                                value={bookingInAdvanceDays} 
-                                onChange={e => setBookingInAdvanceDays(parseInt(e.target.value, 10))} 
-                                required 
+                                value={bookingInAdvanceDays}
+                                onChange={e => setBookingInAdvanceDays(parseInt(e.target.value, 10))}
+                                required
                                 helperText={t('bookableInAdvanceHelper')}
                             />
-                            <Input 
+                            <Input
                                 label={t('minBookingNoticeLabel')}
                                 type="number"
                                 min="0"
-                                value={minBookingNoticeHours} 
-                                onChange={e => setMinBookingNoticeHours(parseInt(e.target.value, 10))} 
-                                required 
+                                value={minBookingNoticeHours}
+                                onChange={e => setMinBookingNoticeHours(parseInt(e.target.value, 10))}
+                                required
                                 helperText={t('minBookingNoticeHelper')}
                             />
-                            <Input 
+                            <Input
                                 label={t('bufferTimeLabel')}
                                 type="number"
                                 min="0"
-                                value={bufferTimeMinutes} 
-                                onChange={e => setBufferTimeMinutes(parseInt(e.target.value, 10))} 
-                                required 
+                                value={bufferTimeMinutes}
+                                onChange={e => setBufferTimeMinutes(parseInt(e.target.value, 10))}
+                                required
                                 helperText={t('bufferTimeHelper')}
                             />
-                            <Select 
+                            <Select
                                 label={t('timeSlotIntervalLabel')}
                                 id="time-slot-interval"
                                 value={timeSlotInterval}
                                 onChange={e => setTimeSlotInterval(parseInt(e.target.value, 10))}
-                                required 
+                                required
                                 helperText={t('timeSlotIntervalHelper')}
                             >
                                 <option value="15">15 minutes</option>
@@ -648,17 +681,17 @@ const Settings: React.FC = () => {
                             </Select>
                         </div>
                         <div className="p-4 sm:p-6 bg-muted/50 border-t border-border text-right">
-                             <Button type="submit" isLoading={isSubmitting}>{t('saveCalendarSettings')}</Button>
+                            <Button type="submit" isLoading={isSubmitting}>{t('saveCalendarSettings')}</Button>
                         </div>
                     </form>
                 </Accordion>
-             )}
-             
+            )}
+
             {business && (
-                 <Accordion title={t('domains')}>
+                <Accordion title={t('domains')}>
                     <div className="p-4 sm:p-6 space-y-6">
                         <Card>
-                             <form onSubmit={handleLinkSubmit}>
+                            <form onSubmit={handleLinkSubmit}>
                                 <CardHeader>
                                     <h3 className="text-lg font-semibold">{t('yourSubdomain')}</h3>
                                     <p className="text-sm text-muted-foreground">{t('yourSubdomainDesc')}</p>
@@ -685,20 +718,20 @@ const Settings: React.FC = () => {
                                 </CardContent>
                                 <CardFooter className="flex-wrap items-center gap-2">
                                     <Button type="submit" isLoading={isSubmittingLink}>
-                                    {t('saveLink')}
+                                        {t('saveLink')}
                                     </Button>
                                     <Button onClick={() => copyLinkToClipboard(publicBookingLink)} type="button" variant="secondary" className="w-24">
-                                    {linkCopied ? t('copied') : t('copyLink')}
+                                        {linkCopied ? t('copied') : t('copyLink')}
                                     </Button>
                                     <Button type="button" onClick={() => setIsQrModalOpen(true)} variant="secondary">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 4h6v6H4V4z" />
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M14 4h6v6h-6V4z" />
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 14h6v6H4v-6z" />
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M14 14h1v1h-1v-1z" />
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M18 14h1v1h-1v-1z" />
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M14 18h1v1h-1v-1z" />
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M18 18h1v1h-1v-1z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4h6v6H4V4z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M14 4h6v6h-6V4z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 14h6v6H4v-6z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M14 14h1v1h-1v-1z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M18 14h1v1h-1v-1z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M14 18h1v1h-1v-1z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M18 18h1v1h-1v-1z" />
                                         </svg>
                                         {t('qrCode')}
                                     </Button>
@@ -709,36 +742,41 @@ const Settings: React.FC = () => {
                                         {t('preview')}
                                     </Button>
                                 </CardFooter>
-                             </form>
+                            </form>
                         </Card>
                         <Card>
-                            <CardHeader>
-                                <div className="flex justify-between items-center">
-                                    <h3 className="text-lg font-semibold">{t('connectYourDomain')}</h3>
-                                    <span className="px-2 py-0.5 text-xs font-semibold tracking-wide text-blue-800 bg-blue-100 dark:bg-blue-700 dark:text-blue-200">PRO</span>
-                                </div>
-                                <p className="text-sm text-muted-foreground">{t('connectYourDomainDesc')}</p>
-                            </CardHeader>
-                            <CardContent className="opacity-60">
-                                <Input
-                                    label="Your Custom Domain"
-                                    placeholder={t('customDomainPlaceholder')}
-                                    disabled
-                                />
-                                <p className="text-xs text-muted-foreground mt-2">
-                                    {t('cnameInstructions')}
-                                </p>
-                            </CardContent>
-                            <CardFooter>
-                                 <Button disabled>{t('comingSoon')}</Button>
-                            </CardFooter>
+                            <form onSubmit={handleDomainSubmit}>
+                                <CardHeader>
+                                    <div className="flex justify-between items-center">
+                                        <h3 className="text-lg font-semibold">{t('connectYourDomain')}</h3>
+                                        <span className="px-2 py-0.5 text-xs font-semibold tracking-wide text-blue-800 bg-blue-100 dark:bg-blue-700 dark:text-blue-200">PRO</span>
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">{t('connectYourDomainDesc')}</p>
+                                </CardHeader>
+                                <CardContent>
+                                    <Input
+                                        label="Your Custom Domain"
+                                        placeholder={t('customDomainPlaceholder')}
+                                        value={customDomain}
+                                        onChange={(e) => setCustomDomain(e.target.value)}
+                                    />
+                                    <p className="text-xs text-muted-foreground mt-2">
+                                        {t('cnameInstructions')}
+                                    </p>
+                                    {domainError && <p className="text-destructive text-sm mt-2">{domainError}</p>}
+                                    {domainSuccess && <p className="text-green-600 text-sm mt-2">{domainSuccess}</p>}
+                                </CardContent>
+                                <CardFooter>
+                                    <Button type="submit" isLoading={isSavingDomain}>Save Domain</Button>
+                                </CardFooter>
+                            </form>
                         </Card>
                     </div>
-                 </Accordion>
+                </Accordion>
             )}
 
             {!business && !loading && (
-                 <Card>
+                <Card>
                     <CardContent className="text-center">
                         <h2 className="text-xl font-bold text-foreground">{t('welcomeTitle')}</h2>
                         <p className="mt-2 text-muted-foreground">{t('welcomeDesc')}</p>
@@ -747,28 +785,28 @@ const Settings: React.FC = () => {
             )}
 
             {publicBookingLink && (
-                 <Modal isOpen={isQrModalOpen} onClose={() => setIsQrModalOpen(false)} title={t('shareBookingPage')}>
+                <Modal isOpen={isQrModalOpen} onClose={() => setIsQrModalOpen(false)} title={t('shareBookingPage')}>
                     <div className="p-6 text-center space-y-4">
                         <div className="flex justify-center">
-                            <img 
-                                src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(publicBookingLink)}`} 
-                                alt="Booking Page QR Code" 
+                            <img
+                                src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(publicBookingLink)}`}
+                                alt="Booking Page QR Code"
                                 className="rounded-lg border-4 border-border"
                             />
                         </div>
                         <p className="text-sm text-muted-foreground break-all">{publicBookingLink}</p>
-                        <a 
+                        <a
                             href={`https://api.qrserver.com/v1/create-qr-code/?size=512x512&data=${encodeURIComponent(publicBookingLink)}`}
                             download="booking-qr-code.png"
                             className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50 disabled:pointer-events-none px-4 py-2 bg-primary text-primary-foreground shadow hover:bg-primary/90 w-full"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                             </svg>
                             {t('downloadQrCode')}
                         </a>
                     </div>
-                 </Modal>
+                </Modal>
             )}
         </div>
     );
