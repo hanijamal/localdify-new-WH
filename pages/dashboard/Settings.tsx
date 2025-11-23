@@ -123,9 +123,12 @@ const Settings: React.FC = () => {
     }, [business]);
 
     useEffect(() => {
-        const origin = window.location.origin;
+        const hostname = window.location.hostname;
+        const protocol = window.location.protocol;
+
         if (slug) {
-            setPublicBookingLink(`${origin}/#/b/${slug}`);
+            // Create clean URL without hash
+            setPublicBookingLink(`${protocol}//${hostname}/${slug}`);
         } else {
             setPublicBookingLink('');
         }
@@ -701,18 +704,33 @@ const Settings: React.FC = () => {
                                         <label htmlFor="business-slug" className="block text-sm font-medium text-foreground mb-1">
                                             {t('bookingPageUrl')}
                                         </label>
-                                        <div className="flex flex-col sm:flex-row items-stretch">
-                                            <span className="h-10 inline-flex items-center px-3 rounded-t-md sm:rounded-l-md sm:rounded-tr-none border border-b-0 sm:border-r-0 border-input bg-muted text-muted-foreground text-sm whitespace-nowrap">
-                                                {`${window.location.origin}/#/b/`}
-                                            </span>
-                                            <Input
-                                                id="business-slug"
-                                                value={slug}
-                                                onChange={e => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                                                placeholder={t('yourBusinessNamePlaceholder')}
-                                                className="!rounded-t-none !rounded-b-md sm:!rounded-l-none sm:!rounded-r-md"
-                                            />
+
+                                        {/* Short Link Display */}
+                                        <div className="mb-4 p-4 bg-muted/30 rounded-lg border border-border">
+                                            <p className="text-xs text-muted-foreground mb-2">Your Short Booking Link:</p>
+                                            <p className="text-lg font-semibold text-primary font-mono break-all">
+                                                {slug ? `app.localdify.com/${slug}` : 'Set your slug below'}
+                                            </p>
                                         </div>
+
+                                        {/* Slug Input */}
+                                        <div className="flex flex-col sm:flex-row items-stretch gap-2">
+                                            <div className="flex-1">
+                                                <label htmlFor="slug-input" className="block text-xs text-muted-foreground mb-1">
+                                                    Your Unique Slug
+                                                </label>
+                                                <Input
+                                                    id="slug-input"
+                                                    value={slug}
+                                                    onChange={e => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                                                    placeholder={t('yourBusinessNamePlaceholder')}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <p className="text-xs text-muted-foreground mt-2">
+                                            This creates: <span className="font-mono">app.localdify.com/{slug || 'yourslug'}</span>
+                                        </p>
                                     </div>
                                     {linkError && <p className="text-destructive text-sm mt-2">{linkError}</p>}
                                 </CardContent>

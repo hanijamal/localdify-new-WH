@@ -71,6 +71,8 @@ const App: React.FC = () => {
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/p/:slug" element={<GenericPage />} />
         <Route path="/test-domain" element={<CustomDomainTester />} />
+        {/* Clean URL support - must be last to avoid conflicts */}
+        <Route path="/:businessSlug" element={<PublicBookingRouter />} />
       </Route>
 
       {/* User Dashboard routes */}
