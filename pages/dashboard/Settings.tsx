@@ -123,12 +123,10 @@ const Settings: React.FC = () => {
     }, [business]);
 
     useEffect(() => {
-        const hostname = window.location.hostname;
-        const protocol = window.location.protocol;
-
+        const origin = window.location.origin;
         if (slug) {
-            // Create clean URL without hash
-            setPublicBookingLink(`${protocol}//${hostname}/${slug}`);
+            // Keep hash format for actual functionality
+            setPublicBookingLink(`${origin}/#/b/${slug}`);
         } else {
             setPublicBookingLink('');
         }
@@ -705,32 +703,30 @@ const Settings: React.FC = () => {
                                             {t('bookingPageUrl')}
                                         </label>
 
-                                        {/* Short Link Display */}
-                                        <div className="mb-4 p-4 bg-muted/30 rounded-lg border border-border">
-                                            <p className="text-xs text-muted-foreground mb-2">Your Short Booking Link:</p>
-                                            <p className="text-lg font-semibold text-primary font-mono break-all">
-                                                {slug ? `app.localdify.com/${slug}` : 'Set your slug below'}
+                                        {/* Clean Short Link Display */}
+                                        <div className="mb-4 p-4 bg-primary/10 rounded-lg border-2 border-primary/20">
+                                            <p className="text-xs font-medium text-muted-foreground mb-2">📱 Share this link with customers:</p>
+                                            <p className="text-xl font-bold text-primary font-mono break-all">
+                                                {slug ? `localdify.com/${slug}` : 'Choose your slug below'}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground mt-2">
+                                                Short, clean, and easy to remember!
                                             </p>
                                         </div>
 
                                         {/* Slug Input */}
-                                        <div className="flex flex-col sm:flex-row items-stretch gap-2">
-                                            <div className="flex-1">
-                                                <label htmlFor="slug-input" className="block text-xs text-muted-foreground mb-1">
-                                                    Your Unique Slug
-                                                </label>
-                                                <Input
-                                                    id="slug-input"
-                                                    value={slug}
-                                                    onChange={e => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                                                    placeholder={t('yourBusinessNamePlaceholder')}
-                                                />
-                                            </div>
+                                        <div>
+                                            <label htmlFor="slug-input" className="block text-sm font-medium text-foreground mb-2">
+                                                Your Unique Slug
+                                            </label>
+                                            <Input
+                                                id="slug-input"
+                                                value={slug}
+                                                onChange={e => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                                                placeholder="your-business-name"
+                                                helperText="Use lowercase letters, numbers, and hyphens only"
+                                            />
                                         </div>
-
-                                        <p className="text-xs text-muted-foreground mt-2">
-                                            This creates: <span className="font-mono">app.localdify.com/{slug || 'yourslug'}</span>
-                                        </p>
                                     </div>
                                     {linkError && <p className="text-destructive text-sm mt-2">{linkError}</p>}
                                 </CardContent>
