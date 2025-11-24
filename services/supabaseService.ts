@@ -4,39 +4,39 @@ import { User, Business, Service, Booking, BookingStatus, ShortLink, SupportTick
 
 // Helper to map Supabase's snake_case to our camelCase, especially for dates.
 export const mapBookingFromDb = (dbBooking: any): Booking => ({
-  id: dbBooking.id,
-  businessId: dbBooking.business_id,
-  customerName: dbBooking.customer_name,
-  customerEmail: dbBooking.customer_email,
-  customerPhone: dbBooking.customer_phone,
-  serviceId: dbBooking.service_id,
-  serviceName: dbBooking.service_name,
-  priceAtBooking: dbBooking.price_at_booking,
-  date: dbBooking.date,
-  time: dbBooking.time,
-  status: dbBooking.status,
-  notes: dbBooking.notes,
-  createdAt: new Date(dbBooking.created_at),
-  confirmation_token: dbBooking.confirmation_token,
-  cancellation_token: dbBooking.cancellation_token,
-  reminder_sent_at: dbBooking.reminder_sent_at,
-  staffMemberId: dbBooking.staff_member_id,
-  locationId: dbBooking.location_id,
-  language: dbBooking.language,
+    id: dbBooking.id,
+    businessId: dbBooking.business_id,
+    customerName: dbBooking.customer_name,
+    customerEmail: dbBooking.customer_email,
+    customerPhone: dbBooking.customer_phone,
+    serviceId: dbBooking.service_id,
+    serviceName: dbBooking.service_name,
+    priceAtBooking: dbBooking.price_at_booking,
+    date: dbBooking.date,
+    time: dbBooking.time,
+    status: dbBooking.status,
+    notes: dbBooking.notes,
+    createdAt: new Date(dbBooking.created_at),
+    confirmation_token: dbBooking.confirmation_token,
+    cancellation_token: dbBooking.cancellation_token,
+    reminder_sent_at: dbBooking.reminder_sent_at,
+    staffMemberId: dbBooking.staff_member_id,
+    locationId: dbBooking.location_id,
+    language: dbBooking.language,
 });
 
 export const mapServiceFromDb = (dbService: any): Service => ({
-  id: dbService.id,
-  businessId: dbService.business_id,
-  name: dbService.name,
-  duration: dbService.duration,
-  price: dbService.price,
-  description: dbService.description,
-  imageUrl: dbService.image_url,
-  staffMemberIds: dbService.staff_members?.map((s: any) => s.staff_id) || [],
-  // FIX: Map category_id from the database to the categoryId property.
-  categoryId: dbService.category_id,
-  locationIds: dbService.service_locations?.map((l: any) => l.location_id) || dbService.location_ids,
+    id: dbService.id,
+    businessId: dbService.business_id,
+    name: dbService.name,
+    duration: dbService.duration,
+    price: dbService.price,
+    description: dbService.description,
+    imageUrl: dbService.image_url,
+    staffMemberIds: dbService.staff_members?.map((s: any) => s.staff_id) || [],
+    // FIX: Map category_id from the database to the categoryId property.
+    categoryId: dbService.category_id,
+    locationIds: dbService.service_locations?.map((l: any) => l.location_id) || dbService.location_ids,
 });
 
 export const mapStaffMemberFromDb = (dbStaff: any): StaffMember => ({
@@ -69,6 +69,7 @@ export const mapBusinessFromDb = (dbBusiness: any): Business | null => {
         themeSettings: dbBusiness.theme_settings,
         enabledEmailLanguages: dbBusiness.enabled_email_languages,
         defaultLanguage: dbBusiness.default_language,
+        allowLanguageSelection: dbBusiness.allow_language_selection,
         google_access_token: dbBusiness.google_access_token,
         google_refresh_token: dbBusiness.google_refresh_token,
         google_integration_active: dbBusiness.google_integration_active,
@@ -82,13 +83,13 @@ export const mapBusinessFromDb = (dbBusiness: any): Business | null => {
 };
 
 export const mapTemplateFromDb = (dbTemplate: any): Template => ({
-  id: dbTemplate.id,
-  name: dbTemplate.name,
-  description: dbTemplate.description,
-  imageUrl: dbTemplate.image_url,
-  htmlContent: dbTemplate.html_content,
-  cssContent: dbTemplate.css_content,
-  createdAt: dbTemplate.created_at,
+    id: dbTemplate.id,
+    name: dbTemplate.name,
+    description: dbTemplate.description,
+    imageUrl: dbTemplate.image_url,
+    htmlContent: dbTemplate.html_content,
+    cssContent: dbTemplate.css_content,
+    createdAt: dbTemplate.created_at,
 });
 
 
@@ -101,15 +102,15 @@ export const loginUser = async (email: string, pass: string): Promise<User | nul
 };
 
 export const registerUser = async (name: string, email: string, pass: string): Promise<void> => {
-    const { error } = await supabase.auth.signUp({ 
-      email, 
-      password: pass,
-      options: {
-        data: {
-          name,
-        },
-        emailRedirectTo: `${window.location.origin}/#/email-confirmed`
-      }
+    const { error } = await supabase.auth.signUp({
+        email,
+        password: pass,
+        options: {
+            data: {
+                name,
+            },
+            emailRedirectTo: `${window.location.origin}/#/email-confirmed`
+        }
     });
     if (error) throw error;
 };
@@ -126,13 +127,13 @@ export const getUserProfile = async (id: string): Promise<User | null> => {
         .select('*')
         .eq('id', id)
         .single();
-    
+
     if (userError) {
         console.error("Error fetching user profile:", userError.message);
         // Throw the error to be caught by the calling function (e.g., in AuthContext)
         throw userError;
     }
-    
+
     // If no user data is found, return null.
     if (!userData) return null;
 
@@ -142,7 +143,7 @@ export const getUserProfile = async (id: string): Promise<User | null> => {
         .select('name')
         .eq('user_id', id)
         .single();
-    
+
     // An error fetching the business is not critical if the user exists but hasn't created a business yet.
     // 'PGRST116' is the code for "NOT_FOUND", which is expected for new users.
     if (businessError && businessError.code !== 'PGRST116') {
@@ -179,10 +180,10 @@ export const updateUserProfile = async (userId: string, data: Partial<User>): Pr
 
     if (Object.keys(updates).length === 0) {
         const currentUserProfile = await getUserProfile(userId);
-        if(!currentUserProfile) throw new Error("User not found");
+        if (!currentUserProfile) throw new Error("User not found");
         return currentUserProfile;
     }
-    
+
     const { error } = await supabase.from('users').update(updates).eq('id', userId);
     if (error) throw error;
 
@@ -199,7 +200,7 @@ export const updateUserPassword = async (newPass: string): Promise<void> => {
 
 export const sendPasswordResetEmail = async (email: string): Promise<void> => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/#/update-password`,
+        redirectTo: `${window.location.origin}/#/update-password`,
     });
     if (error) throw error;
 };
@@ -248,11 +249,11 @@ export const getPublicBusinessDataBySlug = async (slug: string): Promise<{ busin
         console.error(`Error fetching public business data by slug ${slug}:`, error.message);
         throw error;
     }
-    
+
     if (!data) return null;
-    
+
     const { locations, ...businessData } = data;
-    
+
     return {
         business: mapBusinessFromDb(businessData)!,
         locations: locations || [],
@@ -273,7 +274,7 @@ export const createOrUpdateBusiness = async (businessData: Partial<Business> & {
         return newObj;
     };
     const updatePayload = toSnakeCase(updateData);
-    
+
     let businessId = id;
 
     if (id) {
@@ -281,7 +282,7 @@ export const createOrUpdateBusiness = async (businessData: Partial<Business> & {
             .from('businesses')
             .update(updatePayload)
             .eq('id', id);
-            
+
         if (error) {
             if (error.code === '23505' && error.details?.includes('slug')) {
                 throw new Error('This page link is already in use. Please choose another.');
@@ -297,7 +298,7 @@ export const createOrUpdateBusiness = async (businessData: Partial<Business> & {
         if (error) throw error;
         businessId = newBusiness.id;
     }
-    
+
     if (!businessId) throw new Error("Could not create or update business.");
 
     return businessId;
@@ -348,7 +349,7 @@ export const addService = async (serviceData: Partial<Service>): Promise<Service
             console.error('Failed to link service to locations, but service was created:', relationError.message);
         }
     }
-    
+
     return mapServiceFromDb({ ...newServiceData, location_ids: locationIds });
 };
 
@@ -366,7 +367,7 @@ export const updateService = async (serviceId: string, updates: Partial<Service>
         const { error } = await supabase.from('services').update(dbUpdates).eq('id', serviceId);
         if (error) throw error;
     }
-    
+
     if (locationIds !== undefined) {
         const { error: deleteError } = await supabase.from('service_locations').delete().eq('service_id', serviceId);
         if (deleteError) throw deleteError;
@@ -401,7 +402,7 @@ export const getStaffForBusiness = async (businessId: string): Promise<StaffMemb
         .select('*, staff_services(service_id), staff_locations(location_id)')
         .eq('business_id', businessId)
         .order('name');
-        
+
     if (error) throw error;
     return (data || []).map(mapStaffMemberFromDb);
 };
@@ -470,7 +471,7 @@ export const updateStaffMember = async (staffId: string, updates: Partial<StaffM
             if (insertError) throw insertError;
         }
     }
-    
+
     if (locationIds !== undefined) {
         const { error: deleteError } = await supabase.from('staff_locations').delete().eq('staff_id', staffId);
         if (deleteError) throw deleteError;
@@ -481,7 +482,7 @@ export const updateStaffMember = async (staffId: string, updates: Partial<StaffM
             if (insertError) throw insertError;
         }
     }
-    
+
     const { data: refetchedData, error: refetchError } = await supabase
         .from('staff_members')
         .select('*, staff_services(service_id), staff_locations(location_id)')
@@ -500,10 +501,10 @@ export const deleteStaffMember = async (staffId: string): Promise<void> => {
 
 export const getBookingsForBusiness = async (businessId: string): Promise<Booking[]> => {
     const { data, error } = await supabase
-      .from('bookings')
-      .select('*')
-      .eq('business_id', businessId)
-      .order('created_at', { ascending: false });
+        .from('bookings')
+        .select('*')
+        .eq('business_id', businessId)
+        .order('created_at', { ascending: false });
     if (error) throw error;
     return (data || []).map(mapBookingFromDb);
 };
@@ -577,7 +578,7 @@ export const createPaymentRecord = async (record: Omit<PaymentHistory, 'id' | 'c
     };
 
     const { error } = await supabase.from('payment_history').insert(dbRecord);
-    
+
     if (error) {
         console.error("Supabase insert error in createPaymentRecord:", JSON.stringify(error, null, 2));
         throw error;
@@ -722,7 +723,7 @@ export const createTicket = async (subject: string, message: string): Promise<Su
 };
 
 export const addMessageToTicket = async (ticketId: string, content: string): Promise<TicketMessage> => {
-     const { data, error } = await supabase.functions.invoke('add-ticket-message', {
+    const { data, error } = await supabase.functions.invoke('add-ticket-message', {
         body: { ticket_id: ticketId, content }
     });
     if (error) throw error;
@@ -737,7 +738,7 @@ export const getAllTicketsForAdmin = async (): Promise<SupportTicket[]> => {
 };
 
 export const getTicketByIdForAdmin = async (ticketId: string): Promise<SupportTicket | null> => {
-     const { data, error } = await supabase.rpc('get_admin_ticket_detail_by_id', { p_ticket_id: ticketId });
+    const { data, error } = await supabase.rpc('get_admin_ticket_detail_by_id', { p_ticket_id: ticketId });
     if (error) {
         console.error("Error fetching admin ticket detail:", error.message);
         return null;
@@ -759,7 +760,7 @@ export const getSystemSetting = async <T>(key: string): Promise<SystemSetting<T>
         .select('key, value')
         .eq('key', key)
         .single();
-    
+
     if (error) {
         if (error.code === 'PGRST116') return null; // Not found is not an error
         console.error(`Error fetching system setting '${key}':`, error.message);
@@ -774,7 +775,7 @@ export const updateSystemSetting = async <T>(key: string, value: T): Promise<Sys
         .upsert({ key, value })
         .select()
         .single();
-        
+
     if (error) {
         console.error(`Error updating system setting '${key}':`, error.message);
         throw error;
@@ -830,7 +831,7 @@ export const getPublicSystemSettings = async (): Promise<PublicSystemSettings | 
         const { data, error } = await supabase.rpc('get_public_system_settings');
         if (error) throw error;
         return data as PublicSystemSettings | null;
-    } catch(e: unknown) {
+    } catch (e: unknown) {
         // FIX: Safely handle unknown error to provide a more descriptive console log instead of "[object Object]".
         console.error("Failed to fetch public settings via RPC", (e as Error).message || e);
         return null;

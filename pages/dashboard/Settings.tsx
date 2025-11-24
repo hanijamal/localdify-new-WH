@@ -108,7 +108,9 @@ const Settings: React.FC = () => {
                 whatsapp: business.socials?.whatsapp || '',
             });
             setDefaultLanguage(business.defaultLanguage || 'en');
-            setAllowLanguageSelection(business.allowLanguageSelection || false);
+            const langSelectionValue = business.allowLanguageSelection ?? true;
+            console.log('📥 Loading allowLanguageSelection from DB:', business.allowLanguageSelection, '→ Setting to:', langSelectionValue);
+            setAllowLanguageSelection(langSelectionValue);
             setCustomDomain(business.customDomain || '');
             if (business.themeSettings) {
                 setPrimaryColor(business.themeSettings.primaryColor || '#00cc61');
@@ -200,10 +202,14 @@ const Settings: React.FC = () => {
                 }
             };
 
+            console.log('💾 Saving allowLanguageSelection:', allowLanguageSelection);
+            console.log('📦 Full payload:', payload);
             await createOrUpdateBusiness(payload);
             await refetch();
+            console.log('✅ Save completed, refetched business');
         } catch (error: any) {
-            console.error("Failed to save business settings:", error.message);
+            console.error("❌ Failed to save business settings:", error.message);
+            console.error("Full error:", error);
         } finally {
             setIsSubmitting(false);
         }
