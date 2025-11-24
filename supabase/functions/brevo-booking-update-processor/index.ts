@@ -21,7 +21,7 @@ const WEBHOOK_SECRET = Deno.env.get('BOOKING_WEBHOOK_SECRET');
 const APP_URL = Deno.env.get('APP_URL');
 
 enum LocalBookingStatus {
-    Approved = "approved"
+  Approved = "approved"
 }
 
 // --- Type Definitions ---
@@ -50,30 +50,30 @@ interface OwnerForEmail {
 }
 
 const templatesByLang = {
-    en: {
-        reminder: {
-            subject: "Reminder: Your appointment tomorrow with {{businessName}}",
-            body: "<p>Hi {{customerName}},</p><p>This is a friendly reminder of your upcoming appointment:</p><ul style='list-style: none; padding: 0; margin-left: 0;'><li><strong>Service:</strong> {{serviceName}}</li><li><strong>Price:</strong> {{price}}</li><li><strong>Date & Time:</strong> {{date}} at {{time}}</li><li><strong>Provider:</strong> {{staffMemberName}}</li><li><strong>Location:</strong> {{locationName}}</li><li><strong>Address:</strong> {{locationAddress}}</li></ul><p>If you need to reschedule, please contact us.</p><p>See you soon,<br/>{{businessName}}</p><p style=\"text-align:center;margin-top:20px;font-size:14px;color:#999999;\">{{socialsLinks}}</p><p style=\"text-align:center;font-size:12px;color:#999999;margin-top:20px;\">Powered by <a href=\"{{appLink}}\" style=\"color:#644a40;text-decoration:none;\">localDify</a></p>"
-        }
-    },
-    'pt-BR': {
-        reminder: {
-            subject: "Lembrete: Seu agendamento amanhã com {{businessName}}",
-            body: "<p>Olá {{customerName}},</p><p>Este é um lembrete amigável do seu próximo agendamento:</p><ul style='list-style: none; padding: 0; margin-left: 0;'><li><strong>Serviço:</strong> {{serviceName}}</li><li><strong>Preço:</strong> {{price}}</li><li><strong>Data e Hora:</strong> {{date}} às {{time}}</li><li><strong>Profissional:</strong> {{staffMemberName}}</li><li><strong>Local:</strong> {{locationName}}</li><li><strong>Endereço:</strong> {{locationAddress}}</li></ul><p>Se precisar reagendar, por favor, entre em contato conosco.</p><p>Até breve,<br/>{{businessName}}</p><p style=\"text-align:center;margin-top:20px;font-size:14px;color:#999999;\">{{socialsLinks}}</p><p style=\"text-align:center;font-size:12px;color:#999999;margin-top:20px;\">Desenvolvido por <a href=\"{{appLink}}\" style=\"color:#644a40;text-decoration:none;\">localDify</a></p>"
-        }
-    },
-    ar: {
-        reminder: {
-            subject: "{{businessName}} | تذكير بموعدك غداً لخدمة {{serviceName}}",
-            body: "<div dir=\"rtl\" style=\"text-align: right; font-family: 'Amiri', serif;\"><p>مرحباً {{customerName}}،</p><p>هذا تذكير ودي بموعدك القادم:</p><ul style='list-style: none; padding: 0; margin-right: 0;'><li><strong>الخدمة:</strong> {{serviceName}}</li><li><strong>السعر:</strong> {{price}}</li><li><strong>التاريخ والوقت:</strong> {{date}} الساعة {{time}}</li><li><strong>مقدم الخدمة:</strong> {{staffMemberName}}</li><li><strong>الفرع:</strong> {{locationName}}</li><li><strong>العنوان:</strong> {{locationAddress}}</li></ul><p>إذا كنت بحاجة إلى إعادة الجدولة، يرجى الاتصال بنا.</p><p>نراك قريباً،<br/>{{businessName}}</p><p style=\"text-align:center;margin-top:20px;font-size:14px;color:#999999;\">{{socialsLinks}}</p><p style=\"text-align:center;font-size:12px;color:#999999;margin-top:20px;\">بدعم من <a href=\"{{appLink}}\" style=\"color:#644a40;text-decoration:none;\">localDify</a></p></div>"
-        }
-    },
-    fr: {
-        reminder: {
-            subject: "Rappel : Votre rendez-vous demain chez {{businessName}}",
-            body: "<p>Bonjour {{customerName}},</p><p>Ceci est un rappel amical de votre prochain rendez-vous :</p><ul style='list-style: none; padding: 0; margin-left: 0;'><li><strong>Service :</strong> {{serviceName}}</li><li><strong>Prix :</strong> {{price}}</li><li><strong>Date et Heure :</strong> {{date}} à {{time}}</li><li><strong>Prestataire :</strong> {{staffMemberName}}</li><li><strong>Lieu :</strong> {{locationName}}</li><li><strong>Adresse :</strong> {{locationAddress}}</li></ul><p>Si vous avez besoin de reporter, veuillez nous contacter.</p><p>À bientôt,<br/>{{businessName}}</p><p style=\"text-align:center;margin-top:20px;font-size:14px;color:#999999;\">{{socialsLinks}}</p><p style=\"text-align:center;font-size:12px;color:#999999;margin-top:20px;\">Propulsé par <a href=\"{{appLink}}\" style=\"color:#644a40;text-decoration:none;\">localDify</a></p>"
-        }
+  en: {
+    reminder: {
+      subject: "Reminder: Your appointment tomorrow with {{businessName}}",
+      body: "<p>Hi {{customerName}},</p><p>This is a friendly reminder of your upcoming appointment:</p><ul style='list-style: none; padding: 0; margin-left: 0;'><li><strong>Service:</strong> {{serviceName}}</li><li><strong>Price:</strong> {{price}}</li><li><strong>Date & Time:</strong> {{date}} at {{time}}</li><li><strong>Provider:</strong> {{staffMemberName}}</li><li><strong>Location:</strong> {{locationName}}</li><li><strong>Address:</strong> {{locationAddress}}</li></ul><p>If you need to reschedule, please contact us.</p><p>See you soon,<br/>{{businessName}}</p><p style=\"text-align:center;margin-top:20px;font-size:14px;color:#999999;\">{{socialsLinks}}</p><p style=\"text-align:center;font-size:12px;color:#999999;margin-top:20px;\">Powered by <a href=\"{{appLink}}\" style=\"color:#644a40;text-decoration:none;\">localDify</a></p>"
     }
+  },
+  'pt-BR': {
+    reminder: {
+      subject: "Lembrete: Seu agendamento amanhã com {{businessName}}",
+      body: "<p>Olá {{customerName}},</p><p>Este é um lembrete amigável do seu próximo agendamento:</p><ul style='list-style: none; padding: 0; margin-left: 0;'><li><strong>Serviço:</strong> {{serviceName}}</li><li><strong>Preço:</strong> {{price}}</li><li><strong>Data e Hora:</strong> {{date}} às {{time}}</li><li><strong>Profissional:</strong> {{staffMemberName}}</li><li><strong>Local:</strong> {{locationName}}</li><li><strong>Endereço:</strong> {{locationAddress}}</li></ul><p>Se precisar reagendar, por favor, entre em contato conosco.</p><p>Até breve,<br/>{{businessName}}</p><p style=\"text-align:center;margin-top:20px;font-size:14px;color:#999999;\">{{socialsLinks}}</p><p style=\"text-align:center;font-size:12px;color:#999999;margin-top:20px;\">Desenvolvido por <a href=\"{{appLink}}\" style=\"color:#644a40;text-decoration:none;\">localDify</a></p>"
+    }
+  },
+  ar: {
+    reminder: {
+      subject: "{{businessName}} | تذكير بموعدك غداً لخدمة {{serviceName}}",
+      body: "<div dir=\"rtl\" style=\"text-align: right; font-family: 'IBM Plex Sans Arabic', sans-serif;\"><p>مرحباً {{customerName}}،</p><p>هذا تذكير ودي بموعدك القادم:</p><ul style='list-style: none; padding: 0; margin-right: 0;'><li><strong>الخدمة:</strong> {{serviceName}}</li><li><strong>السعر:</strong> {{price}}</li><li><strong>التاريخ والوقت:</strong> {{date}} الساعة {{time}}</li><li><strong>مقدم الخدمة:</strong> {{staffMemberName}}</li><li><strong>الفرع:</strong> {{locationName}}</li><li><strong>العنوان:</strong> {{locationAddress}}</li></ul><p>إذا كنت بحاجة إلى إعادة الجدولة، يرجى الاتصال بنا.</p><p>نراك قريباً،<br/>{{businessName}}</p><p style=\"text-align:center;margin-top:20px;font-size:14px;color:#999999;\">{{socialsLinks}}</p><p style=\"text-align:center;font-size:12px;color:#999999;margin-top:20px;\">بدعم من <a href=\"{{appLink}}\" style=\"color:#644a40;text-decoration:none;\">localDify</a></p></div>"
+    }
+  },
+  fr: {
+    reminder: {
+      subject: "Rappel : Votre rendez-vous demain chez {{businessName}}",
+      body: "<p>Bonjour {{customerName}},</p><p>Ceci est un rappel amical de votre prochain rendez-vous :</p><ul style='list-style: none; padding: 0; margin-left: 0;'><li><strong>Service :</strong> {{serviceName}}</li><li><strong>Prix :</strong> {{price}}</li><li><strong>Date et Heure :</strong> {{date}} à {{time}}</li><li><strong>Prestataire :</strong> {{staffMemberName}}</li><li><strong>Lieu :</strong> {{locationName}}</li><li><strong>Adresse :</strong> {{locationAddress}}</li></ul><p>Si vous avez besoin de reporter, veuillez nous contacter.</p><p>À bientôt,<br/>{{businessName}}</p><p style=\"text-align:center;margin-top:20px;font-size:14px;color:#999999;\">{{socialsLinks}}</p><p style=\"text-align:center;font-size:12px;color:#999999;margin-top:20px;\">Propulsé par <a href=\"{{appLink}}\" style=\"color:#644a40;text-decoration:none;\">localDify</a></p>"
+    }
+  }
 };
 
 // --- Helper Functions for Debugging ---
@@ -85,10 +85,10 @@ const getSecretHint = (secret: string | undefined | null): string => {
 }
 
 const getReceivedSecret = (authHeader: string | null): string | null => {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return null;
-    }
-    return authHeader.substring(7);
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return null;
+  }
+  return authHeader.substring(7);
 }
 
 const formatPriceInFunction = (amount: number, currency = "USD") => {
@@ -126,7 +126,7 @@ serve(async (req) => {
         `\n2. Secret received from the webhook: ${getSecretHint(receivedSecret)}` +
         `\n\nCompare these two hints. If they do not match, you must re-set your secrets to be identical.` +
         `\nReceived full header: "${authorization}"`;
-      
+
       console.error(detailedError);
       return new Response(JSON.stringify({ error: 'Unauthorized. The webhook secret is incorrect. Check the function logs for detailed troubleshooting steps.' }), { status: 401 });
     }
@@ -145,13 +145,13 @@ serve(async (req) => {
     // --- Logic Checks ---
     // Prevent sending a reminder right after a booking is created, as the confirmation email should be sent instead.
     if (payload.type === 'INSERT') {
-        const createdAt = new Date(booking.created_at);
-        const now = new Date();
-        const twoMinutes = 2 * 60 * 1000;
-        if ((now.getTime() - createdAt.getTime()) < twoMinutes) {
-            console.log(`Skipped immediate reminder for new booking ${booking.id} to allow confirmation email to be sent first.`);
-            return new Response(JSON.stringify({ message: 'Skipped: Booking recently created. Waiting for confirmation email to process.' }), { status: 200 });
-        }
+      const createdAt = new Date(booking.created_at);
+      const now = new Date();
+      const twoMinutes = 2 * 60 * 1000;
+      if ((now.getTime() - createdAt.getTime()) < twoMinutes) {
+        console.log(`Skipped immediate reminder for new booking ${booking.id} to allow confirmation email to be sent first.`);
+        return new Response(JSON.stringify({ message: 'Skipped: Booking recently created. Waiting for confirmation email to process.' }), { status: 200 });
+      }
     }
 
     const today = new Date();
@@ -169,8 +169,8 @@ serve(async (req) => {
     // 4. Fetch Brevo settings
     console.log('Fetching Brevo settings from database...');
     const [
-      apiKeyRes, 
-      senderNameRes, 
+      apiKeyRes,
+      senderNameRes,
       senderEmailRes,
     ] = await Promise.all([
       supabaseAdmin.from('system_settings').select('value').eq('key', 'brevo_api_key').single(),
@@ -202,45 +202,45 @@ serve(async (req) => {
 
     console.log(`Fetching owner email for user_id: ${business.user_id}`);
     const { data: owner, error: ownerError } = await supabaseAdmin
-        .from('users')
-        .select('email')
-        .eq('id', business.user_id)
-        .single<OwnerForEmail>();
+      .from('users')
+      .select('email')
+      .eq('id', business.user_id)
+      .single<OwnerForEmail>();
 
     if (ownerError) throw new Error(`DB Error: Failed to fetch business owner: ${ownerError.message}`);
     const ownerEmail = owner?.email;
     console.log(`Owner email found: ${ownerEmail ? 'Yes' : 'No'}`);
 
-     // Fetch Staff Member Name
+    // Fetch Staff Member Name
     let staffMemberName = 'Any available staff';
     if (booking.staff_member_id) {
-        const { data: staffMember, error: staffError } = await supabaseAdmin
-            .from('staff_members')
-            .select('name')
-            .eq('id', booking.staff_member_id)
-            .single();
-        if (staffError) {
-            console.warn(`Could not fetch staff member ${booking.staff_member_id}: ${staffError.message}`);
-        } else if (staffMember) {
-            staffMemberName = staffMember.name;
-        }
+      const { data: staffMember, error: staffError } = await supabaseAdmin
+        .from('staff_members')
+        .select('name')
+        .eq('id', booking.staff_member_id)
+        .single();
+      if (staffError) {
+        console.warn(`Could not fetch staff member ${booking.staff_member_id}: ${staffError.message}`);
+      } else if (staffMember) {
+        staffMemberName = staffMember.name;
+      }
     }
 
     // Fetch location details
     let locationName = '';
     let locationAddress = '';
     if (booking.location_id) {
-        const { data: location, error: locationError } = await supabaseAdmin
-            .from('locations')
-            .select('name, address')
-            .eq('id', booking.location_id)
-            .single();
-        if (locationError) {
-            console.warn(`Could not fetch location ${booking.location_id}: ${locationError.message}`);
-        } else if (location) {
-            locationName = location.name;
-            locationAddress = location.address || '';
-        }
+      const { data: location, error: locationError } = await supabaseAdmin
+        .from('locations')
+        .select('name, address')
+        .eq('id', booking.location_id)
+        .single();
+      if (locationError) {
+        console.warn(`Could not fetch location ${booking.location_id}: ${locationError.message}`);
+      } else if (location) {
+        locationName = location.name;
+        locationAddress = location.address || '';
+      }
     }
 
 
@@ -254,49 +254,49 @@ serve(async (req) => {
 
     let socialsHtml = '';
     if (business.socials && Object.values(business.socials).some(v => v)) {
-        const links = [];
-        if (business.socials.website) links.push(`<a href="${business.socials.website}" style="color:#644a40;text-decoration:none;">Website</a>`);
-        if (business.socials.instagram) links.push(`<a href="${business.socials.instagram}" style="color:#644a40;text-decoration:none;">Instagram</a>`);
-        if (business.socials.facebook) links.push(`<a href="${business.socials.facebook}" style="color:#644a40;text-decoration:none;">Facebook</a>`);
-        if (business.socials.whatsapp) {
-            const cleanPhone = business.socials.whatsapp.replace(/\D/g, '');
-            links.push(`<a href="https://wa.me/${cleanPhone}" style="color:#644a40;text-decoration:none;">WhatsApp</a>`);
-        }
-        socialsHtml = links.join(' &bull; ');
+      const links = [];
+      if (business.socials.website) links.push(`<a href="${business.socials.website}" style="color:#644a40;text-decoration:none;">Website</a>`);
+      if (business.socials.instagram) links.push(`<a href="${business.socials.instagram}" style="color:#644a40;text-decoration:none;">Instagram</a>`);
+      if (business.socials.facebook) links.push(`<a href="${business.socials.facebook}" style="color:#644a40;text-decoration:none;">Facebook</a>`);
+      if (business.socials.whatsapp) {
+        const cleanPhone = business.socials.whatsapp.replace(/\D/g, '');
+        links.push(`<a href="https://wa.me/${cleanPhone}" style="color:#644a40;text-decoration:none;">WhatsApp</a>`);
+      }
+      socialsHtml = links.join(' &bull; ');
     }
-    
+
     const localeForDate = lang === 'en' ? 'en-US' : lang === 'pt-BR' ? 'pt-BR' : lang === 'fr' ? 'fr-FR' : 'ar-SA';
     const dateOptions: Intl.DateTimeFormatOptions = {
-        timeZone: 'UTC',
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
+      timeZone: 'UTC',
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
     };
     if (lang === 'ar') {
-        dateOptions.calendar = 'gregory';
-        dateOptions.numberingSystem = 'latn';
+      dateOptions.calendar = 'gregory';
+      dateOptions.numberingSystem = 'latn';
     }
 
     const placeholders = {
-        '{{customerName}}': booking.customer_name,
-        '{{serviceName}}': booking.service_name,
-        '{{price}}': formatPriceInFunction(booking.price_at_booking, business.currency || 'USD'),
-        '{{date}}': new Date(`${booking.date}T00:00:00`).toLocaleDateString(localeForDate, dateOptions),
-        '{{time}}': booking.time,
-        '{{businessName}}': business.name,
-        '{{notes}}': booking.notes || '',
-        '{{staffMemberName}}': staffMemberName,
-        '{{locationName}}': locationName,
-        '{{locationAddress}}': locationAddress,
-        '{{socialsLinks}}': socialsHtml,
-        '{{appLink}}': APP_URL,
+      '{{customerName}}': booking.customer_name,
+      '{{serviceName}}': booking.service_name,
+      '{{price}}': formatPriceInFunction(booking.price_at_booking, business.currency || 'USD'),
+      '{{date}}': new Date(`${booking.date}T00:00:00`).toLocaleDateString(localeForDate, dateOptions),
+      '{{time}}': booking.time,
+      '{{businessName}}': business.name,
+      '{{notes}}': booking.notes || '',
+      '{{staffMemberName}}': staffMemberName,
+      '{{locationName}}': locationName,
+      '{{locationAddress}}': locationAddress,
+      '{{socialsLinks}}': socialsHtml,
+      '{{appLink}}': APP_URL,
     };
 
     for (const [key, value] of Object.entries(placeholders)) {
-        const regex = new RegExp(key.replace(/([{}])/g, '\\$1'), 'g');
-        subject = subject.replace(regex, value || '');
-        body = body.replace(regex, value || '');
+      const regex = new RegExp(key.replace(/([{}])/g, '\\$1'), 'g');
+      subject = subject.replace(regex, value || '');
+      body = body.replace(regex, value || '');
     }
 
     const fromName = `${business.name} via ${brevoSenderName}`;
@@ -330,12 +330,12 @@ serve(async (req) => {
     }
 
     const { error: incrementError } = await supabaseAdmin.rpc('increment_business_counter', {
-        p_business_id: booking.business_id,
-        p_counter_column: 'email_messages_sent',
-        p_increment_by: 1
+      p_business_id: booking.business_id,
+      p_counter_column: 'email_messages_sent',
+      p_increment_by: 1
     });
     if (incrementError) {
-        console.warn(`[Booking Update Reminder] Failed to increment email counter for business ${booking.business_id}:`, incrementError.message);
+      console.warn(`[Booking Update Reminder] Failed to increment email counter for business ${booking.business_id}:`, incrementError.message);
     }
 
     // 8. Mark the reminder as sent in the database
@@ -344,13 +344,13 @@ serve(async (req) => {
       .from('bookings')
       .update({ reminder_sent_at: new Date().toISOString() })
       .eq('id', booking.id);
-    
+
     if (updateError) {
-        console.warn(`Failed to mark reminder as sent for booking ${booking.id}: ${updateError.message}`);
+      console.warn(`Failed to mark reminder as sent for booking ${booking.id}: ${updateError.message}`);
     } else {
-        console.log('Successfully marked reminder as sent.');
+      console.log('Successfully marked reminder as sent.');
     }
-    
+
     console.log(`Immediate reminder sent successfully to ${booking.customer_email}.`);
 
     return new Response(JSON.stringify({ success: true, message: 'Immediate reminder processed.' }), {
