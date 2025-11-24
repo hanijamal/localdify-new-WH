@@ -182,6 +182,7 @@ const DashboardLayout: React.FC = () => {
               </button>
             </div>
             <div className="flex items-center space-x-2 md:space-x-4">
+              <NotificationCenter />
               <ThemeToggle />
               <Dropdown
                 align="end"
@@ -196,94 +197,91 @@ const DashboardLayout: React.FC = () => {
                 <DropdownHeader>{user?.email}</DropdownHeader>
                 <DropdownSeparator />
 
-                {/* Location Section */}
-                <div className="px-2 py-1.5">
-                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{t('location') || 'Location'}</div>
-                  <Dropdown
-                    align="end"
-                    trigger={
-                      <button className="w-full flex items-center justify-between gap-x-2 px-3 py-2 rounded-md text-sm hover:bg-accent hover:text-foreground focus:outline-none ring-1 ring-border">
-                        <div className="flex items-center gap-x-2">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                          </svg>
-                          <span className="font-medium">{selectedLocationName}</span>
-                        </div>
-                        <ChevronDownIcon />
-                      </button>
-                    }
-                  >
-                    <DropdownItem onClick={() => setSelectedLocationId('all')} className={selectedLocationId === 'all' ? 'bg-accent' : ''}>
-                      {t('allLocations')}
+                {/* Location Row */}
+                <Dropdown
+                  align="start"
+                  trigger={
+                    <button className="w-full flex items-center justify-between px-4 py-2 text-sm hover:bg-accent transition-colors">
+                      <div className="flex items-center gap-x-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                        <span className="text-muted-foreground">{t('location') || 'Locations'}</span>
+                      </div>
+                      <span className="text-primary font-medium">{selectedLocationName}</span>
+                    </button>
+                  }
+                >
+                  <DropdownItem onClick={() => setSelectedLocationId('all')} className={selectedLocationId === 'all' ? 'bg-accent' : ''}>
+                    {t('allLocations')}
+                  </DropdownItem>
+                  <DropdownSeparator />
+                  {locations.map(loc => (
+                    <DropdownItem key={loc.id} onClick={() => setSelectedLocationId(loc.id)} className={selectedLocationId === loc.id ? 'bg-accent' : ''}>
+                      {loc.name}
                     </DropdownItem>
-                    <DropdownSeparator />
-                    {locations.map(loc => (
-                      <DropdownItem key={loc.id} onClick={() => setSelectedLocationId(loc.id)} className={selectedLocationId === loc.id ? 'bg-accent' : ''}>
-                        {loc.name}
-                      </DropdownItem>
-                    ))}
-                  </Dropdown>
-                </div>
+                  ))}
+                </Dropdown>
 
-                <DropdownSeparator />
+                {/* Language Row */}
+                <Dropdown
+                  align="start"
+                  trigger={
+                    <button className="w-full flex items-center justify-between px-4 py-2 text-sm hover:bg-accent transition-colors">
+                      <div className="flex items-center gap-x-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                        <span className="text-muted-foreground">{t('language') || 'Language'}</span>
+                      </div>
+                      <span className="text-primary font-medium">{currentLanguage.name}</span>
+                    </button>
+                  }
+                >
+                  {languages.map(lang => (
+                    <DropdownItem
+                      key={lang.code}
+                      onClick={() => setLanguage(lang.code)}
+                      className={`flex items-center space-x-2 ${language === lang.code ? 'bg-accent font-semibold' : ''}`}
+                    >
+                      <span className="text-base">{lang.flag}</span>
+                      <span>{lang.name}</span>
+                    </DropdownItem>
+                  ))}
+                </Dropdown>
 
-                {/* Language Section */}
-                <div className="px-2 py-1.5">
-                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{t('language') || 'Language'}</div>
-                  <Dropdown
-                    align="end"
-                    trigger={
-                      <button className="w-full flex items-center justify-between gap-x-2 px-3 py-2 rounded-md text-sm hover:bg-accent hover:text-foreground focus:outline-none ring-1 ring-border">
-                        <div className="flex items-center gap-x-2">
-                          <span className="text-base">{currentLanguage.flag}</span>
-                          <span className="font-medium">{currentLanguage.name}</span>
-                        </div>
-                        <ChevronDownIcon />
-                      </button>
-                    }
-                  >
-                    {languages.map(lang => (
-                      <DropdownItem
-                        key={lang.code}
-                        onClick={() => setLanguage(lang.code)}
-                        className={`flex items-center space-x-2 ${language === lang.code ? 'bg-accent font-semibold text-accent-foreground' : ''}`}
-                      >
-                        <span className="text-base">{lang.flag}</span>
-                        <span>{lang.name}</span>
-                      </DropdownItem>
-                    ))}
-                  </Dropdown>
-                </div>
-
-                <DropdownSeparator />
-
-                {/* Notifications Section */}
-                <div className="px-2 py-1.5">
-                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{t('notifications') || 'Notifications'}</div>
-                  <div className="px-1">
-                    <NotificationCenter />
+                {/* Mode Row */}
+                <button
+                  onClick={() => {/* Theme toggle will be handled by ThemeToggle component */ }}
+                  className="w-full flex items-center justify-between px-4 py-2 text-sm hover:bg-accent transition-colors"
+                >
+                  <div className="flex items-center gap-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                    <span className="text-muted-foreground">{t('mode') || 'Mode'}</span>
                   </div>
-                </div>
+                  <span className="text-primary font-medium capitalize">{theme}</span>
+                </button>
 
                 <DropdownSeparator />
 
                 {/* Account Actions */}
                 <DropdownItem onClick={() => setIsProfileModalOpen(true)} className="flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>
                   {t('editProfile')}
                 </DropdownItem>
                 <DropdownItem onClick={() => navigate('/dashboard/billing')} className="flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>
                   {t('sidebarBilling')}
                 </DropdownItem>
                 <DropdownItem onClick={handleLogout} className="flex items-center text-destructive hover:bg-destructive/10">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>
                   {t('logout')}
                 </DropdownItem>
