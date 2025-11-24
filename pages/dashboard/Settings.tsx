@@ -58,6 +58,7 @@ const Settings: React.FC = () => {
         whatsapp: '',
     });
     const [defaultLanguage, setDefaultLanguage] = useState('en');
+    const [allowLanguageSelection, setAllowLanguageSelection] = useState(false);
 
     // Theme Settings State
     const [primaryColor, setPrimaryColor] = useState('#00cc61');
@@ -107,6 +108,7 @@ const Settings: React.FC = () => {
                 whatsapp: business.socials?.whatsapp || '',
             });
             setDefaultLanguage(business.defaultLanguage || 'en');
+            setAllowLanguageSelection(business.allowLanguageSelection || false);
             setCustomDomain(business.customDomain || '');
             if (business.themeSettings) {
                 setPrimaryColor(business.themeSettings.primaryColor || '#00cc61');
@@ -183,6 +185,7 @@ const Settings: React.FC = () => {
                 currency,
                 socials,
                 defaultLanguage: defaultLanguage,
+                allowLanguageSelection: allowLanguageSelection,
                 calendarSettings: {
                     bookingInAdvanceDays: Number(bookingInAdvanceDays),
                     minBookingNoticeHours: Number(minBookingNoticeHours),
@@ -410,6 +413,22 @@ const Settings: React.FC = () => {
                                 <option key={lang.code} value={lang.code}>{t(lang.nameKey)}</option>
                             ))}
                         </Select>
+
+                        <div className="flex items-center space-x-2">
+                            <input
+                                type="checkbox"
+                                id="allow-language-selection"
+                                checked={allowLanguageSelection}
+                                onChange={e => setAllowLanguageSelection(e.target.checked)}
+                                className="h-4 w-4 text-primary focus:ring-primary border-input rounded"
+                            />
+                            <label htmlFor="allow-language-selection" className="text-sm font-medium text-foreground cursor-pointer">
+                                {t('allowLanguageSelection') || 'Allow customers to select their language'}
+                            </label>
+                        </div>
+                        <p className="text-xs text-muted-foreground -mt-2">
+                            {t('allowLanguageSelectionHelper') || 'If enabled, customers can choose their preferred language on the booking page. Otherwise, they will see only the default language.'}
+                        </p>
 
                         <div>
                             <label className="block text-sm font-medium text-foreground mb-1">{t('descriptionLabel')}</label>

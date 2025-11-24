@@ -98,6 +98,7 @@ export interface Business {
   themeSettings?: ThemeSettings;
   enabledEmailLanguages?: string[];
   defaultLanguage?: string;
+  allowLanguageSelection?: boolean;
   google_access_token?: string | null;
   google_refresh_token?: string | null;
   google_integration_active?: boolean;

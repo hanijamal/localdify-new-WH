@@ -21,6 +21,8 @@ const translations = {
     "disableWhatsapp": "Disable WhatsApp",
     "defaultPublicLang": "Default Public Page Language",
     "defaultPublicLangHelper": "This will be the initial language visitors see on your booking page.",
+    "allowLanguageSelection": "Allow customers to select their language",
+    "allowLanguageSelectionHelper": "If enabled, customers can choose their preferred language on the booking page. Otherwise, they will see only the default language.",
     "deletePlanInUseError": "Cannot delete this plan because it is currently assigned to one or more users. Please reassign users to a different plan before deleting.",
     "deleteDefaultPlanError": "Cannot delete the 'Standard' plan as it is the default plan for new users.",
     "whatsappHeader": "WhatsApp",
@@ -603,6 +605,8 @@ const translations = {
     "disableWhatsapp": "Désactiver WhatsApp",
     "defaultPublicLang": "Langue par Défaut de la Page Publique",
     "defaultPublicLangHelper": "Ce sera la langue initiale que les visiteurs verront sur votre page de réservation.",
+    "allowLanguageSelection": "Permettre aux clients de sélectionner leur langue",
+    "allowLanguageSelectionHelper": "Si activé, les clients peuvent choisir leur langue préférée sur la page de réservation. Sinon, ils ne verront que la langue par défaut.",
     "deletePlanInUseError": "Impossible de supprimer ce plan car il est actuellement attribué à un ou plusieurs utilisateurs. Veuillez réaffecter les utilisateurs à un autre plan avant de le supprimer.",
     "deleteDefaultPlanError": "Impossible de supprimer le plan 'Standard' car c'est le plan par défaut pour les nouveaux utilisateurs.",
     "whatsappHeader": "WhatsApp",
@@ -1196,6 +1200,10 @@ const translations = {
     "whatsappNotificationsDisabledText": "إشعارات الواتساب معطلة",
     "enableWhatsapp": "تفعيل الواتساب",
     "disableWhatsapp": "تعطيل الواتساب",
+    "defaultPublicLang": "لغة الصفحة العامة الافتراضية",
+    "defaultPublicLangHelper": "هذه ستكون اللغة الأولية التي سيراها الزوار على صفحة الحجز الخاصة بك.",
+    "allowLanguageSelection": "السماح للعملاء باختيار لغتهم",
+    "allowLanguageSelectionHelper": "إذا تم التفعيل، يمكن للعملاء اختيار لغتهم المفضلة على صفحة الحجز. وإلا، سيرون اللغة الافتراضية فقط.",
     "currentPlanIs": "اشتراكك في {{planName}} نشط.",
     "proPlan": "الخطة الاحترافية",
     "businessPlan": "خطة الأعمال",
@@ -1771,7 +1779,7 @@ interface LanguageContextType {
 
 export const LanguageContext = createContext<LanguageContextType>({
   language: 'en',
-  setLanguage: () => {},
+  setLanguage: () => { },
   t: (key) => key,
 });
 
