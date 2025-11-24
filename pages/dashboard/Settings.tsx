@@ -706,11 +706,16 @@ const Settings: React.FC = () => {
                                         {/* Clean Short Link Display */}
                                         <div className="mb-4 p-4 bg-primary/10 rounded-lg border-2 border-primary/20">
                                             <p className="text-xs font-medium text-muted-foreground mb-2">📱 Share this link with customers:</p>
-                                            <p className="text-xl font-bold text-primary font-mono break-all">
-                                                {slug ? `localdify.com/${slug}` : 'Choose your slug below'}
-                                            </p>
+                                            <a
+                                                href={publicBookingLink}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-lg font-bold text-primary font-mono break-all hover:underline block"
+                                            >
+                                                {publicBookingLink || 'Choose your slug below'}
+                                            </a>
                                             <p className="text-xs text-muted-foreground mt-2">
-                                                Short, clean, and easy to remember!
+                                                Click to preview your booking page
                                             </p>
                                         </div>
 
