@@ -772,10 +772,6 @@ const PublicBookingPage: React.FC = () => {
     const hasCoverImage = !!business.themeSettings?.coverImageUrl;
     const currentLanguage = languages.find(l => l.code === language) || languages[0];
 
-    // Debug: Log the allowLanguageSelection value
-    console.log('🌍 Public Page - allowLanguageSelection:', business.allowLanguageSelection);
-    console.log('🌍 Public Page - Should show dropdown:', business.allowLanguageSelection ? 'YES' : 'NO');
-
     // Only show language dropdown if business allows language selection
     const languageDropdown = business.allowLanguageSelection ? (
         <Dropdown
