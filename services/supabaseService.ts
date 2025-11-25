@@ -47,8 +47,8 @@ export const mapStaffMemberFromDb = (dbStaff: any): StaffMember => ({
     imageUrl: dbStaff.image_url,
     workingHours: dbStaff.working_hours,
     closedDays: dbStaff.closed_days,
-    serviceIds: dbStaff.staff_services?.map((s: any) => s.service_id) || dbStaff.service_ids,
-    locationIds: dbStaff.staff_locations?.map((l: any) => l.location_id) || dbStaff.location_ids,
+    serviceIds: dbStaff.staff_services?.map((s: any) => s.service_id) || dbStaff.service_ids || [],
+    locationIds: dbStaff.staff_locations?.map((l: any) => l.location_id) || dbStaff.location_ids || [],
 });
 
 export const mapBusinessFromDb = (dbBusiness: any): Business | null => {
@@ -69,7 +69,6 @@ export const mapBusinessFromDb = (dbBusiness: any): Business | null => {
         themeSettings: dbBusiness.theme_settings,
         enabledEmailLanguages: dbBusiness.enabled_email_languages,
         defaultLanguage: dbBusiness.default_language,
-        allowLanguageSelection: dbBusiness.allow_language_selection,
         google_access_token: dbBusiness.google_access_token,
         google_refresh_token: dbBusiness.google_refresh_token,
         google_integration_active: dbBusiness.google_integration_active,

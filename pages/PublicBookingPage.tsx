@@ -563,44 +563,50 @@ const BookingForm: React.FC<{
                 <div className="space-y-6 animate-fade-in">
                     <div>
                         <label className="block text-sm font.medium text-foreground mb-4">{t('chooseServices')}</label>
-                        <div className="space-y-2">
-                            {servicesByCategory.map((category, index) => (
-                                <Accordion title={category.name} key={index} defaultOpen={index === 0}>
-                                    <div className="divide-y divide-border">
-                                        {category.services.map(service => {
-                                            const isSelected = selectedServiceIds.includes(service.id);
-                                            return (
-                                                <div key={service.id} className="p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4 hover:bg-accent/50 transition-colors">
-                                                    <img
-                                                        src={service.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(service.name)}&background=EAE6E1&color=413F3D&size=128`}
-                                                        alt={service.name}
-                                                        className="w-full sm:w-24 h-24 object-cover rounded-md flex-shrink-0"
-                                                    />
-                                                    <div className="flex-1">
-                                                        <p className="font.semibold text-foreground">{service.name}</p>
-                                                        {service.description && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{service.description}</p>}
-                                                    </div>
-                                                    <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
-                                                        <div className="text-right flex-shrink-0">
-                                                            <p className="font.semibold text-foreground">{formatPrice(service.price, business.currency)}</p>
-                                                            <p className="text-sm text-muted-foreground">{formatDuration(service.duration)}</p>
+                        {filteredServices.length === 0 ? (
+                            <div className="text-center p-4 border border-dashed border-border rounded-lg">
+                                <p className="text-muted-foreground">{t('noServicesForStaff')}</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                {servicesByCategory.map((category, index) => (
+                                    <Accordion title={category.name} key={index} defaultOpen={index === 0}>
+                                        <div className="divide-y divide-border">
+                                            {category.services.map(service => {
+                                                const isSelected = selectedServiceIds.includes(service.id);
+                                                return (
+                                                    <div key={service.id} className="p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4 hover:bg-accent/50 transition-colors">
+                                                        <img
+                                                            src={service.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(service.name)}&background=EAE6E1&color=413F3D&size=128`}
+                                                            alt={service.name}
+                                                            className="w-full sm:w-24 h-24 object-cover rounded-md flex-shrink-0"
+                                                        />
+                                                        <div className="flex-1">
+                                                            <p className="font.semibold text-foreground">{service.name}</p>
+                                                            {service.description && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{service.description}</p>}
                                                         </div>
-                                                        <Button
-                                                            type="button"
-                                                            onClick={() => toggleServiceSelection(service.id)}
-                                                            variant={isSelected ? 'primary' : 'secondary'}
-                                                            className="w-28 flex-shrink-0"
-                                                        >
-                                                            {isSelected ? t('selected') : t('select')}
-                                                        </Button>
+                                                        <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                                                            <div className="text-right flex-shrink-0">
+                                                                <p className="font.semibold text-foreground">{formatPrice(service.price, business.currency)}</p>
+                                                                <p className="text-sm text-muted-foreground">{formatDuration(service.duration)}</p>
+                                                            </div>
+                                                            <Button
+                                                                type="button"
+                                                                onClick={() => toggleServiceSelection(service.id)}
+                                                                variant={isSelected ? 'primary' : 'secondary'}
+                                                                className="w-28 flex-shrink-0"
+                                                            >
+                                                                {isSelected ? t('selected') : t('select')}
+                                                            </Button>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            )
-                                        })}
-                                    </div>
-                                </Accordion>
-                            ))}
-                        </div>
+                                                )
+                                            })}
+                                        </div>
+                                    </Accordion>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {selectedServices.length > 0 && (
